@@ -1,0 +1,6 @@
+{
+  "name": "PCA Klaten Utara",
+  "description": "Web App Shortlink Resmi Pimpinan Cabang 'Aisyiyah Klaten Utara - Perempuan Berkemajuan: Mencerahkan, Memberdayakan, Memajukan Umat",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

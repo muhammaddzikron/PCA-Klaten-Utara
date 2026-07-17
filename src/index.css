@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-gold: #F7A600;
+  --color-orange: #F3B632;
+  --color-turquoise: #00B8A9;
+  --color-green: #009966;
+  --color-soft-cream: #FDFCF9;
+  --color-dark-text: #2F3A40;
+}
+
+/* Custom CSS variables for Immersive UI light/dark mode */
+:root {
+  --app-bg: linear-gradient(135deg, #FFF8EF 0%, #FDFCF9 25%, #E9F7F4 60%, #D9F3EE 100%);
+  --text-main: #2F3A40;
+  --text-muted: #5C6E76;
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  --btn-bg: rgba(255, 255, 255, 0.75);
+  --btn-border: rgba(255, 255, 255, 0.6);
+  --btn-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  --link-hover-bg: linear-gradient(90deg, #FFFFFF 0%, #FFF8E1 100%);
+  --link-hover-shadow: rgba(247, 166, 0, 0.15);
+  --glow-1: rgba(247, 166, 0, 0.12);
+  --glow-2: rgba(0, 184, 169, 0.12);
+}
+
+.dark {
+  --app-bg: linear-gradient(135deg, #0D151B 0%, #111B21 25%, #0B2524 60%, #051A19 100%);
+  --text-main: #F5F7FA;
+  --text-muted: #9CA8AF;
+  --glass-bg: rgba(17, 27, 33, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --btn-bg: rgba(21, 33, 41, 0.7);
+  --btn-border: rgba(255, 255, 255, 0.05);
+  --btn-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --link-hover-bg: linear-gradient(90deg, #16242B 0%, #292415 100%);
+  --link-hover-shadow: rgba(247, 166, 0, 0.25);
+  --glow-1: rgba(247, 166, 0, 0.15);
+  --glow-2: rgba(0, 184, 169, 0.15);
+}
+
+/* Immersive UI Background Elements */
+.blur-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.circle-1 {
+  width: 400px;
+  height: 400px;
+  background: #F7A600;
+  top: -100px;
+  left: -100px;
+}
+.circle-2 {
+  width: 350px;
+  height: 350px;
+  background: #00B8A9;
+  bottom: -50px;
+  right: 100px;
+}
+
+.dark .circle-1 {
+  background: rgba(247, 166, 0, 0.25);
+}
+.dark .circle-2 {
+  background: rgba(0, 184, 169, 0.25);
+}
+
+.ornament-curve {
+  position: absolute;
+  top: 50%;
+  left: -50px;
+  transform: translateY(-50%);
+  width: 600px;
+  height: 800px;
+  background: radial-gradient(circle at 0% 50%, rgba(247, 166, 0, 0.08), transparent 70%);
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+}
+.dark .ornament-curve {
+  background: radial-gradient(circle at 0% 50%, rgba(247, 166, 0, 0.04), transparent 70%);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.15);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-30px, 40px) scale(1.1);
+  }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-blob-1 {
+  animation: float-slow 20s infinite alternate ease-in-out;
+}
+
+.animate-blob-2 {
+  animation: float-reverse 25s infinite alternate ease-in-out;
+}
+
+/* Stagger animations on load */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #009966;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--app-bg);
+  color: var(--text-main);
+  transition: background 0.5s ease, color 0.5s ease;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
