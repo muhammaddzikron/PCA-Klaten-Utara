@@ -17,7 +17,6 @@ export interface ShortLink {
 export interface BoardMember {
   name: string;
   role: string;
-  avatar: string;
 }
 
 export interface SubBranch {
@@ -39,7 +38,7 @@ export const profileDetails = {
   history: "Pimpinan Cabang 'Aisyiyah (PCA) Klaten Utara merupakan pilar gerakan dakwah perempuan Islam berkemajuan di bawah naungan Pimpinan Daerah 'Aisyiyah Kabupaten Klaten. Berdiri sejak puluhan tahun lalu, PCA Klaten Utara aktif dalam menyelenggarakan berbagai amal usaha di bidang keagamaan, pendidikan anak usia dini (TK ABA), pelayanan kesehatan sosial, pemberdayaan ekonomi perempuan, dan pembinaan moral umat.",
   vision: "Mewujudkan kehidupan perempuan Islam berkemajuan yang cerdas, mandiri, sehat, dan berakhlak mulia di wilayah Klaten Utara serta berkontribusi nyata bagi umat dan bangsa.",
   mission: [
-    "Menyelenggarakan dakwah Islamiyah yang mencerahkan secara inklusif dan berkelanjutan.",
+    "Menyelenggarakan dakwah Islamiyah yang mencerahkan secara inklusif and berkelanjutan.",
     "Meningkatkan mutu pendidikan dasar dan menengah, khususnya pengelolaan TK ABA.",
     "Memberdayakan ekonomi keluarga melalui program UMKM Bina Usaha 'Aisyiyah.",
     "Menyediakan bimbingan sosial, konseling keluarga sakinah, dan posyandu lansia secara berkala.",
@@ -66,68 +65,55 @@ export const subBranches: SubBranch[] = [
 export const boardMembers: BoardMember[] = [
   {
     name: "Hj. Siti Aminah, S.Ag.",
-    role: "Ketua PCA Klaten Utara",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua PCA Klaten Utara"
   },
   {
     name: "Dra. Hidayah Fitriani",
-    role: "Sekretaris I",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Sekretaris I"
   },
   {
     name: "Ibu Sri Mulyani, S.Pd.",
-    role: "Sekretaris II",
-    avatar: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Sekretaris II"
   },
   {
     name: "Hj. Nurul Latifah",
-    role: "Bendahara I",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Bendahara I"
   },
   {
     name: "Ibu Rahmawati, S.E.",
-    role: "Bendahara II",
-    avatar: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Bendahara II"
   },
   {
     name: "Ustazah Salamah, M.Pd.I.",
-    role: "Ketua Majelis Tabligh",
-    avatar: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Tabligh"
   },
   {
     name: "Ibu Sri Rahayu, S.Pd.",
-    role: "Ketua Majelis Dikdasmen",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Dikdasmen"
   },
   {
     name: "Dr. Hj. Retno Woelandari",
-    role: "Ketua Majelis Kesehatan",
-    avatar: "https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Kesehatan"
   },
   {
     name: "Ibu Aminah Zuhri",
-    role: "Ketua Majelis Ekonomi & Ketenagakerjaan",
-    avatar: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Ekonomi & Ketenagakerjaan"
   },
   {
     name: "Ibu Siti Maryam",
-    role: "Ketua Majelis Kesejahteraan Sosial",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Kesejahteraan Sosial"
   },
   {
     name: "Ibu Tri Astuti, S.E.",
-    role: "Ketua Majelis Pembinaan Kader",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Pembinaan Kader"
   },
   {
     name: "Adv. Fitriani, S.H., M.H.",
-    role: "Ketua Majelis Hukum & HAM",
-    avatar: "https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Hukum & HAM"
   },
   {
     name: "Ibu Khairunnisa, S.I.Kom.",
-    role: "Ketua Majelis Tabligh & Medkom",
-    avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&q=80&w=200&h=200"
+    role: "Ketua Majelis Tabligh & Medkom"
   }
 ];
 
@@ -150,7 +136,7 @@ export const linksData: ShortLink[] = [
     title: "Pengurus PCA Klaten Utara",
     subtitle: "Struktur Organisasi & Majelis",
     url: "#board",
-    emoji: "👩🏻💼",
+    emoji: "🧕",
     ariaLabel: "Buka struktur pengurus lengkap",
     category: "internal",
     isModal: true,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   linksData, boardMembers, subBranches, officeDetails, profileDetails, ShortLink 
 } from './data';
@@ -7,7 +7,7 @@ import {
   Phone, Mail, ChevronRight, X, Info, Users, Globe,
   Facebook, Instagram, Youtube, MessageCircle, BarChart3, RotateCcw, 
   Award, CheckCircle2, Star, Sparkles, Navigation, Link2, BookOpen,
-  Database, RefreshCw
+  Database, RefreshCw, LogIn, LogOut, Lock, Edit3, Trash2, Plus
 } from 'lucide-react';
 
 // Synthesize a premium soft tactile audio click in the browser
@@ -143,7 +143,7 @@ function createLinksSheet(ss) {
   
   var defaultLinks = [
     ["profile", "Profil PCA Klaten Utara", "Sejarah, Visi, Misi & Amal Usaha", "#profile", "👤", "internal", "Tentang Kami", "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300", "Sejarah lengkap, visi dakwah, misi dakwah, dan daftar amal usaha resmi Pimpinan Cabang 'Aisyiyah Klaten Utara.", 124],
-    ["board", "Pengurus PCA Klaten Utara", "Struktur Organisasi & Majelis", "#board", "👩🏻💼", "internal", "Struktur", "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300", "Struktur kepengurusan harian resmi serta pimpinan majelis dakwah.", 98],
+    ["board", "Pengurus PCA Klaten Utara", "Struktur Organisasi & Majelis", "#board", "🧕", "internal", "Struktur", "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300", "Struktur kepengurusan harian resmi serta pimpinan majelis dakwah.", 98],
     ["address", "Alamat Kantor PCA Klaten Utara", "Lokasi Gedung Dakwah & Navigasi", "#address", "📍", "internal", "Peta Lokasi", "", "Lokasi Gedung Dakwah Muhammadiyah Cabang Klaten Utara serta tautan peta navigasi Google Maps.", 156],
     ["website", "Website Resmi 'Aisyiyah", "Pusat Informasi Syiar 'Aisyiyah Nasional", "https://aisyiyah.or.id", "🌐", "social", "", "", "Platform web resmi Pimpinan Pusat 'Aisyiyah untuk kabar kebangsaan terbaru.", 72],
     ["facebook", "Facebook PCA", "Ikuti Update Kegiatan & Syiar di Facebook", "https://facebook.com", "📘", "social", "", "", "Halaman Facebook resmi untuk publikasi pengajian, berita ranting, dan bakti sosial.", 28],
@@ -179,6 +179,37 @@ function getWhatsAppUrl(url: string, message: string) {
   }
 }
 
+function HijabAvatar({ name }: { name: string }) {
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const gradients = [
+    { from: "#0f766e", to: "#0d9488", accessor: "#eab308" }, // Teal & Gold
+    { from: "#047857", to: "#10b981", accessor: "#f59e0b" }, // Emerald & Amber
+    { from: "#15803d", to: "#22c55e", accessor: "#eab308" }, // Green & Gold
+    { from: "#0f766e", to: "#14b8a6", accessor: "#facc15" }, // Deep Teal & Bright Gold
+  ];
+  const grad = gradients[hash % gradients.length];
+
+  return (
+    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <defs>
+        <linearGradient id={`avatarGrad-${hash}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={grad.from} />
+          <stop offset="100%" stopColor={grad.to} />
+        </linearGradient>
+        <linearGradient id={`faceGrad-${hash}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffedd5" />
+          <stop offset="100%" stopColor="#fed7aa" />
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="60" r="56" fill="currentColor" className="text-teal-50/40 dark:text-slate-800" />
+      <path d="M60 18 C32 18 28 42 28 65 C28 85 36 102 60 102 C84 102 92 85 92 65 C92 42 88 18 60 18 Z" fill={`url(#avatarGrad-${hash})`} />
+      <path d="M60 30 C48 30 45 42 45 58 C45 70 51 78 60 78 C69 78 75 70 75 58 C75 42 72 30 60 30 Z" fill={`url(#faceGrad-${hash})`} />
+      <path d="M48 76 C48 76 60 84 72 76 C69 92 51 92 48 76 Z" fill={grad.from} />
+      <circle cx="60" cy="80" r="3" fill={grad.accessor} />
+    </svg>
+  );
+}
+
 export default function App() {
   // Theme state initialization
   const [isDark, setIsDark] = useState(() => {
@@ -204,7 +235,68 @@ export default function App() {
       ? (localStorage.getItem('pca_spreadsheet_url') || 'https://docs.google.com/spreadsheets/d/1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA/edit?usp=sharing') 
       : 'https://docs.google.com/spreadsheets/d/1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA/edit?usp=sharing';
   });
-  const [links, setLinks] = useState<ShortLink[]>(linksData);
+  const [links, setLinks] = useState<ShortLink[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pca_links_custom');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {}
+      }
+    }
+    return linksData;
+  });
+
+  // Admin & Editable States
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_admin_logged_in') === 'true';
+    }
+    return false;
+  });
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  const [showLinkEditorModal, setShowLinkEditorModal] = useState(false);
+  const [editingLink, setEditingLink] = useState<ShortLink | null>(null);
+
+  const [boardMembersState, setBoardMembersState] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pca_board_members');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return boardMembers;
+  });
+  const [isEditingBoard, setIsEditingBoard] = useState(false);
+  const [boardForm, setBoardForm] = useState<any[]>([]);
+
+  const [officeDetailsState, setOfficeDetailsState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pca_office_details');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return officeDetails;
+  });
+  const [isEditingOffice, setIsEditingOffice] = useState(false);
+  const [officeForm, setOfficeForm] = useState<any>({ name: '', address: '', googleMapsUrl: '', wazeUrl: '', phone: '', email: '' });
+
+  const [profileDetailsState, setProfileDetailsState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pca_profile_details');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+    }
+    return profileDetails;
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState<any>({ history: '', vision: '', mission: [], achievements: [] });
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState('');
@@ -370,6 +462,87 @@ export default function App() {
     setIsDark(!isDark);
   };
 
+  // Admin Authentication Handlers
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    playSoftClick();
+    if (loginUsername === 'admin' && loginPassword === 'adminn') {
+      setIsAdminLoggedIn(true);
+      localStorage.setItem('pca_admin_logged_in', 'true');
+      setShowLoginModal(false);
+      setLoginError('');
+      setLoginUsername('');
+      setLoginPassword('');
+      alert("Login Berhasil! Anda sekarang dalam Mode Pengelola Data.");
+    } else {
+      setLoginError('Kredensial salah! Harap periksa Username atau Password.');
+    }
+  };
+
+  const handleLogout = () => {
+    playSoftClick();
+    if (confirm("Apakah Anda yakin ingin keluar dari Mode Pengelola Data?")) {
+      setIsAdminLoggedIn(false);
+      localStorage.removeItem('pca_admin_logged_in');
+      setIsEditingBoard(false);
+      setIsEditingOffice(false);
+      setIsEditingProfile(false);
+      alert("Berhasil Keluar!");
+    }
+  };
+
+  // Admin Data Management Helpers
+  const handleSaveLink = (savedLink: ShortLink) => {
+    setLinks(prev => {
+      const exists = prev.some(l => l.id === savedLink.id);
+      let newLinks;
+      if (exists) {
+        newLinks = prev.map(l => l.id === savedLink.id ? savedLink : l);
+      } else {
+        newLinks = [...prev, savedLink];
+      }
+      localStorage.setItem('pca_links_custom', JSON.stringify(newLinks));
+      return newLinks;
+    });
+    setShowLinkEditorModal(false);
+    setEditingLink(null);
+    alert("Tautan berhasil disimpan!");
+  };
+
+  const handleDeleteLink = (id: string) => {
+    if (confirm("Apakah Anda yakin ingin menghapus tautan ini?")) {
+      setLinks(prev => {
+        const filtered = prev.filter(l => l.id !== id);
+        localStorage.setItem('pca_links_custom', JSON.stringify(filtered));
+        return filtered;
+      });
+    }
+  };
+
+  const handleSaveBoardMembers = () => {
+    playSoftClick();
+    setBoardMembersState(boardForm);
+    localStorage.setItem('pca_board_members', JSON.stringify(boardForm));
+    setIsEditingBoard(false);
+    alert("Daftar Pengurus berhasil disimpan!");
+  };
+
+  const handleSaveOfficeDetails = () => {
+    playSoftClick();
+    setOfficeDetailsState(officeForm);
+    localStorage.setItem('pca_office_details', JSON.stringify(officeForm));
+    setIsEditingOffice(false);
+    alert("Detail Alamat berhasil disimpan!");
+  };
+
+  const handleSaveProfileDetails = () => {
+    playSoftClick();
+    setProfileDetailsState(profileForm);
+    localStorage.setItem('pca_profile_details', JSON.stringify(profileForm));
+    setIsEditingProfile(false);
+    alert("Profil Organisasi berhasil disimpan!");
+  };
+
   // Handle tracking click count when a shortlink is clicked
   const handleLinkClick = (id: string, isModal: boolean, url: string) => {
     playSoftClick();
@@ -449,14 +622,14 @@ export default function App() {
   // Copy office address to clipboard
   const copyOfficeAddress = () => {
     playSoftClick();
-    navigator.clipboard.writeText(officeDetails.address).then(() => {
+    navigator.clipboard.writeText(officeDetailsState.address).then(() => {
       setCopiedAddress(true);
       setTimeout(() => setCopiedAddress(false), 2000);
     });
   };
 
   return (
-    <div className="relative min-h-screen w-full transition-colors duration-500 overflow-x-hidden selection:bg-gold/30 flex items-center justify-center py-12 px-4 sm:px-6">
+    <div className="relative min-h-screen w-full transition-colors duration-500 overflow-x-hidden selection:bg-gold/30 flex items-center justify-center py-12 px-6 sm:px-8">
       
       {/* IMMERSIVE UI BACKGROUND DECORATIONS */}
       <div className="blur-circle circle-1" />
@@ -529,19 +702,80 @@ export default function App() {
                 </>
               )}
             </button>
+            {isAdminLoggedIn ? (
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white border border-red-700 hover:scale-105 active:scale-95 transition-all duration-300 shadow-sm backdrop-blur-sm cursor-pointer text-xs font-bold"
+                title="Keluar dari Panel Admin"
+                aria-label="Logout Admin"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Keluar</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => { playModalOpenSound(); setShowLoginModal(true); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-850 text-white dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-800 hover:scale-105 active:scale-95 transition-all duration-300 shadow-sm backdrop-blur-sm cursor-pointer text-xs font-bold"
+                title="Login Kelola Data"
+                aria-label="Login Admin"
+              >
+                <LogIn className="w-4 h-4 text-gold animate-pulse" />
+                <span>Login</span>
+              </button>
+            )}
           </div>
         </section>
 
         {/* SHORTLINKS PORTFOLIO */}
         <section className="flex flex-col gap-3 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
           
+          {isAdminLoggedIn && (
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/10 dark:bg-slate-950/40 border border-slate-300/40 dark:border-slate-800/40 mb-1 backdrop-blur-sm animate-fade-in flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-green animate-pulse" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Mode Pengelola Aktif</span>
+              </div>
+              <button
+                onClick={() => {
+                  playModalOpenSound();
+                  setEditingLink({
+                    id: 'link-' + Date.now(),
+                    title: '',
+                    subtitle: '',
+                    url: '',
+                    emoji: '🔗',
+                    category: 'internal',
+                    ariaLabel: 'Buka tautan',
+                    isModal: false,
+                    badge: '',
+                    badgeColor: '',
+                    description: '',
+                  });
+                  setShowLinkEditorModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-gold to-green text-white font-extrabold text-[11px] shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Tautan Baru</span>
+              </button>
+            </div>
+          )}
+
           {links.map((link, index) => (
-            <button
+            <div
               key={link.id}
               onClick={() => handleLinkClick(link.id, !!link.isModal, link.url)}
               className="w-full flex items-center justify-between p-4 rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--glass-shadow)] hover:bg-[var(--link-hover-bg)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group text-left relative overflow-hidden"
               style={{ animationDelay: `${index * 80}ms` }}
               aria-label={link.ariaLabel}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleLinkClick(link.id, !!link.isModal, link.url);
+                }
+              }}
             >
               {/* LEFT CONTENT: EMOJI & TEXTS */}
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -573,7 +807,33 @@ export default function App() {
               </div>
 
               {/* RIGHT CONTENT: EXPLICIT BUTTONS PERFECTLY ALIGNED VERTICALLY (LURUS KEBAWAH POSISI SAMA) */}
-              <div className="flex-shrink-0 ml-3">
+              <div className="flex-shrink-0 ml-3 flex items-center gap-2">
+                {isAdminLoggedIn && (
+                  <div className="flex items-center gap-1.5 mr-1">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playModalOpenSound();
+                        setEditingLink(link);
+                        setShowLinkEditorModal(true);
+                      }}
+                      className="p-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                      title="Edit Tautan"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLink(link.id);
+                      }}
+                      className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                      title="Hapus Tautan"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <span className="inline-flex items-center justify-center gap-1 w-20 h-9 rounded-full bg-gradient-to-r from-gold to-green text-white font-extrabold text-xs shadow-md transition-all group-hover:scale-105 active:scale-95 duration-200">
                   <span>Buka</span>
                   {link.isModal ? (
@@ -583,7 +843,7 @@ export default function App() {
                   )}
                 </span>
               </div>
-            </button>
+            </div>
           ))}
 
         </section>
@@ -596,12 +856,12 @@ export default function App() {
       
       {/* 1. PROFILE MODAL */}
       {activeModal === 'profile' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
-              onClick={() => { playSoftClick(); setActiveModal(null); }}
+              onClick={() => { playSoftClick(); setActiveModal(null); setIsEditingProfile(false); }}
               className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -612,7 +872,7 @@ export default function App() {
               <div className="p-3 bg-amber-100/60 dark:bg-amber-950/30 rounded-2xl text-gold">
                 <Award className="w-6 h-6" />
               </div>
-              <div>
+              <div className="flex-1 col">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                   Profil PCA Klaten Utara
                 </h3>
@@ -620,76 +880,210 @@ export default function App() {
                   Sejarah, Visi, Misi & Syiar Organisasi
                 </p>
               </div>
+
+              {/* ADMIN EDIT PROFILE ACTION */}
+              {isAdminLoggedIn && (
+                <div className="flex gap-1.5 mr-6">
+                  {isEditingProfile ? (
+                    <>
+                      <button 
+                        onClick={handleSaveProfileDetails}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Simpan
+                      </button>
+                      <button 
+                        onClick={() => setIsEditingProfile(false)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        playSoftClick();
+                        setProfileForm({ ...profileDetailsState });
+                        setIsEditingProfile(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Profil</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* CONTENT */}
             <div className="space-y-6 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               
-              {/* HISTORY SECTION */}
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
-                  <BookOpen className="w-4 h-4 text-gold" /> Sejarah Singkat
-                </h4>
-                <p>{profileDetails.history}</p>
-              </div>
+              {isEditingProfile ? (
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">SEJARAH SINGKAT</label>
+                    <textarea 
+                      value={profileForm.history}
+                      onChange={(e) => setProfileForm({...profileForm, history: e.target.value})}
+                      rows={5}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium"
+                    />
+                  </div>
 
-              {/* VISION & MISSION SECTION */}
-              <div className="p-5 rounded-2xl bg-gradient-to-tr from-gold/5 to-turquoise/5 dark:from-amber-500/5 dark:to-teal-500/5 border border-white/30 dark:border-slate-800/20">
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
-                  <Star className="w-4 h-4 text-gold" /> Visi Pimpinan Cabang
-                </h4>
-                <p className="italic font-medium text-slate-700 dark:text-slate-200 mb-4 text-center">
-                  "{profileDetails.vision}"
-                </p>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">VISI PEMPINAN CABANG</label>
+                    <textarea 
+                      value={profileForm.vision}
+                      onChange={(e) => setProfileForm({...profileForm, vision: e.target.value})}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium italic"
+                    />
+                  </div>
 
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
-                  <CheckCircle2 className="w-4 h-4 text-green" /> Misi Dakwah
-                </h4>
-                <ul className="space-y-2.5">
-                  {profileDetails.mission.map((mis, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-green flex-shrink-0" />
-                      <span>{mis}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* SUB BRANCHES (PRAS) LIST */}
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2 text-base">
-                  <Users className="w-4 h-4 text-turquoise" /> Pimpinan Ranting 'Aisyiyah (PRA) di Klaten Utara
-                </h4>
-                <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
-                  Koordinasi syiar kewilayahan dibagi menjadi Ranting-Ranting tingkat kelurahan/desa:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {subBranches.map((ran, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-white/40 dark:bg-slate-950/40 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex items-center gap-2.5">
-                      <span className="text-lg">🌸</span>
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">{ran.name}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{ran.location}</p>
-                      </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">MISI DAKWAH</label>
+                    <div className="space-y-2">
+                      {profileForm.mission.map((mis: string, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input 
+                            type="text" 
+                            value={mis}
+                            onChange={(e) => {
+                              const updated = [...profileForm.mission];
+                              updated[idx] = e.target.value;
+                              setProfileForm({...profileForm, mission: updated});
+                            }}
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const updated = profileForm.mission.filter((_: any, i: number) => i !== idx);
+                              setProfileForm({...profileForm, mission: updated});
+                            }}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-xl"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        type="button"
+                        onClick={() => setProfileForm({...profileForm, mission: [...profileForm.mission, '']})}
+                        className="text-[11px] text-green dark:text-teal-400 font-bold hover:underline"
+                      >
+                        + Tambah Misi Baru
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* ACHIEVEMENTS / AMAL USAHA */}
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2.5 flex items-center gap-2 text-base">
-                  <Award className="w-4 h-4 text-gold" /> Amal Usaha & Prestasi Unggulan
-                </h4>
-                <ul className="space-y-2">
-                  {profileDetails.achievements.map((ach, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="text-green text-xs mt-0.5">✔</span>
-                      <span className="text-slate-600 dark:text-slate-300 font-medium">{ach}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">AMAL USAHA & PRESTASI UNGGULAN</label>
+                    <div className="space-y-2">
+                      {profileForm.achievements.map((ach: string, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input 
+                            type="text" 
+                            value={ach}
+                            onChange={(e) => {
+                              const updated = [...profileForm.achievements];
+                              updated[idx] = e.target.value;
+                              setProfileForm({...profileForm, achievements: updated});
+                            }}
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const updated = profileForm.achievements.filter((_: any, i: number) => i !== idx);
+                              setProfileForm({...profileForm, achievements: updated});
+                            }}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-xl"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        type="button"
+                        onClick={() => setProfileForm({...profileForm, achievements: [...profileForm.achievements, '']})}
+                        className="text-[11px] text-green dark:text-teal-400 font-bold hover:underline"
+                      >
+                        + Tambah Amal Usaha / Prestasi
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* HISTORY SECTION */}
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
+                      <BookOpen className="w-4 h-4 text-gold" /> Sejarah Singkat
+                    </h4>
+                    <p>{profileDetailsState.history}</p>
+                  </div>
+
+                  {/* VISION & MISSION SECTION */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-tr from-gold/5 to-turquoise/5 dark:from-amber-500/5 dark:to-teal-500/5 border border-white/30 dark:border-slate-800/20">
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
+                      <Star className="w-4 h-4 text-gold" /> Visi Pimpinan Cabang
+                    </h4>
+                    <p className="italic font-medium text-slate-700 dark:text-slate-200 mb-4 text-center">
+                      "{profileDetailsState.vision}"
+                    </p>
+
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
+                      <CheckCircle2 className="w-4 h-4 text-green" /> Misi Dakwah
+                    </h4>
+                    <ul className="space-y-2.5">
+                      {profileDetailsState.mission.map((mis, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="mt-1 h-2 w-2 rounded-full bg-green flex-shrink-0" />
+                          <span>{mis}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* SUB BRANCHES (PRAS) LIST */}
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2 text-base">
+                      <Users className="w-4 h-4 text-turquoise" /> Pimpinan Ranting 'Aisyiyah (PRA) di Klaten Utara
+                    </h4>
+                    <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+                      Koordinasi syiar kewilayahan dibagi menjadi Ranting-Ranting tingkat kelurahan/desa:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {subBranches.map((ran, i) => (
+                        <div key={i} className="p-3 rounded-xl bg-white/40 dark:bg-slate-950/40 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex items-center gap-2.5">
+                          <span className="text-lg">🌸</span>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">{ran.name}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">{ran.location}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ACHIEVEMENTS / AMAL USAHA */}
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2.5 flex items-center gap-2 text-base">
+                      <Award className="w-4 h-4 text-gold" /> Amal Usaha & Prestasi Unggulan
+                    </h4>
+                    <ul className="space-y-2">
+                      {profileDetailsState.achievements.map((ach, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="text-green text-xs mt-0.5">✔</span>
+                          <span className="text-slate-600 dark:text-slate-300 font-medium">{ach}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
@@ -698,12 +1092,12 @@ export default function App() {
 
       {/* 2. BOARD MEMBERS MODAL */}
       {activeModal === 'board' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
-              onClick={() => { playSoftClick(); setActiveModal(null); }}
+              onClick={() => { playSoftClick(); setActiveModal(null); setIsEditingBoard(false); }}
               className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -714,7 +1108,7 @@ export default function App() {
               <div className="p-3 bg-teal-100/60 dark:bg-teal-950/30 rounded-2xl text-green">
                 <Users className="w-6 h-6" />
               </div>
-              <div>
+              <div className="flex-1 col">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                   Pengurus Harian PCA Klaten Utara
                 </h3>
@@ -722,6 +1116,40 @@ export default function App() {
                   Masa Jabatan Aktif & Koordinator Majelis Bidang
                 </p>
               </div>
+
+              {/* ADMIN EDIT BOARD MEMBERS */}
+              {isAdminLoggedIn && (
+                <div className="flex gap-1.5 mr-6">
+                  {isEditingBoard ? (
+                    <>
+                      <button 
+                        onClick={handleSaveBoardMembers}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Simpan
+                      </button>
+                      <button 
+                        onClick={() => setIsEditingBoard(false)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        playSoftClick();
+                        setBoardForm([...boardMembersState]);
+                        setIsEditingBoard(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Pengurus</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* CONTENT */}
@@ -737,33 +1165,92 @@ export default function App() {
                 </p>
               </div>
 
-              {/* GRID OF LEADERS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {boardMembers.map((member, i) => (
-                  <div 
-                    key={i} 
-                    className="p-4 rounded-2xl bg-white/50 dark:bg-slate-950/50 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex flex-col items-center text-center group hover:scale-[1.02] transition-transform duration-300"
-                  >
-                    {/* AVATAR BOX (With generic placeholder fallback and premium style) */}
-                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gold/40 mb-3 bg-slate-100 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                      <img 
-                        src={member.avatar} 
-                        alt={member.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">
-                        {member.name}
-                      </p>
-                      <p className="text-[10px] text-green dark:text-teal-400 font-bold uppercase mt-1 tracking-wider">
-                        {member.role}
-                      </p>
-                    </div>
+              {isEditingBoard ? (
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBoardForm([...boardForm, { name: '', role: '' }]);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-green/10 text-green dark:text-teal-400 font-bold text-xs hover:bg-green/20 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Pengurus Baru</span>
+                    </button>
                   </div>
-                ))}
-              </div>
+
+                  <div className="space-y-3">
+                    {boardForm.map((member, idx) => (
+                      <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center gap-3">
+                        <div className="flex-1 grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1">NAMA PENGURUS</label>
+                            <input 
+                              type="text" 
+                              value={member.name || ''}
+                              onChange={(e) => {
+                                const updated = [...boardForm];
+                                updated[idx] = { ...updated[idx], name: e.target.value };
+                                setBoardForm(updated);
+                              }}
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-905 text-slate-800 dark:text-slate-100 font-bold"
+                              placeholder="Nama Lengkap"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1">JABATAN</label>
+                            <input 
+                              type="text" 
+                              value={member.role || ''}
+                              onChange={(e) => {
+                                const updated = [...boardForm];
+                                updated[idx] = { ...updated[idx], role: e.target.value };
+                                setBoardForm(updated);
+                              }}
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-905 text-slate-800 dark:text-slate-100 font-bold"
+                              placeholder="Contoh: Ketua, Sekretaris"
+                            />
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const updated = boardForm.filter((_, i) => i !== idx);
+                            setBoardForm(updated);
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* GRID OF LEADERS */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {boardMembersState.map((member, i) => (
+                    <div 
+                      key={i} 
+                      className="p-4 rounded-2xl bg-white/50 dark:bg-slate-950/50 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex flex-col items-center text-center group hover:scale-[1.02] transition-transform duration-300"
+                    >
+                      {/* AVATAR BOX (With generic placeholder fallback and premium style) */}
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gold/40 mb-3 bg-slate-100 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
+                        <HijabAvatar name={member.name} />
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">
+                          {member.name}
+                        </p>
+                        <p className="text-[10px] text-green dark:text-teal-400 font-bold uppercase mt-1 tracking-wider">
+                          {member.role}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="text-center pt-3 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
                 Dokumen SK Resmi Pimpinan Daerah 'Aisyiyah Kabupaten Klaten.
@@ -775,12 +1262,12 @@ export default function App() {
 
       {/* 3. ADDRESS MODAL WITH STATIC MAP PREVIEW & SAFE COPYING */}
       {activeModal === 'address' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-2xl rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
-              onClick={() => { playSoftClick(); setActiveModal(null); }}
+              onClick={() => { playSoftClick(); setActiveModal(null); setIsEditingOffice(false); }}
               className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -791,7 +1278,7 @@ export default function App() {
               <div className="p-3 bg-amber-100/60 dark:bg-amber-950/30 rounded-2xl text-gold">
                 <MapPin className="w-6 h-6" />
               </div>
-              <div>
+              <div className="flex-1 col">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                   Lokasi Kantor PCA Klaten Utara
                 </h3>
@@ -799,74 +1286,161 @@ export default function App() {
                   Alamat Gedung Dakwah & Integrasi Peta Navigasi
                 </p>
               </div>
+
+              {/* ADMIN EDIT OFFICE ACTION */}
+              {isAdminLoggedIn && (
+                <div className="flex gap-1.5 mr-6">
+                  {isEditingOffice ? (
+                    <>
+                      <button 
+                        onClick={handleSaveOfficeDetails}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Simpan
+                      </button>
+                      <button 
+                        onClick={() => setIsEditingOffice(false)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        playSoftClick();
+                        setOfficeForm({ ...officeDetailsState });
+                        setIsEditingOffice(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Alamat</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* CONTENT */}
             <div className="space-y-6 text-sm">
               
-              {/* ADDRESS DESCRIPTION */}
-              <div className="p-5 rounded-2xl bg-slate-100/60 dark:bg-slate-950/60 border border-slate-200/50 dark:border-slate-800/40 shadow-sm">
-                <p className="font-bold text-slate-800 dark:text-slate-100 mb-1.5 text-base">
-                  {officeDetails.name}
-                </p>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4 font-medium text-xs sm:text-sm">
-                  {officeDetails.address}
-                </p>
+              {isEditingOffice ? (
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">NAMA TEMPAT/KANTOR</label>
+                    <input 
+                      type="text" 
+                      value={officeForm.name || ''}
+                      onChange={(e) => setOfficeForm({...officeForm, name: e.target.value})}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-100 font-bold"
+                    />
+                  </div>
 
-                {/* COPY ADDRESS INTERACTION */}
-                <button 
-                  onClick={copyOfficeAddress}
-                  className="flex items-center gap-2 text-xs font-bold text-white bg-gold hover:bg-gold/90 px-4 py-2.5 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
-                >
-                  {copiedAddress ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Alamat Berhasil Disalin!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Salin Alamat Lengkap</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">ALAMAT LENGKAP</label>
+                    <textarea 
+                      value={officeForm.address || ''}
+                      onChange={(e) => setOfficeForm({...officeForm, address: e.target.value})}
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-100 font-medium"
+                    />
+                  </div>
 
-              {/* REAL INTERACTIVE MAP CARD */}
-              <div className="relative h-56 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shadow-md">
-                <iframe
-                  title="Peta Lokasi"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(officeDetails.name + ", " + officeDetails.address)}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
-                  className={`w-full h-full border-0 ${isDark ? 'invert-[0.9] hue-rotate-180 grayscale-[0.2]' : ''}`}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                ></iframe>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">LINK GOOGLE MAPS</label>
+                      <input 
+                        type="text" 
+                        value={officeForm.googleMapsUrl || ''}
+                        onChange={(e) => setOfficeForm({...officeForm, googleMapsUrl: e.target.value})}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-100 font-mono text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">LINK WAZE</label>
+                      <input 
+                        type="text" 
+                        value={officeForm.wazeUrl || ''}
+                        onChange={(e) => setOfficeForm({...officeForm, wazeUrl: e.target.value})}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-100 font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* ADDRESS DESCRIPTION */}
+                  <div className="p-5 rounded-2xl bg-slate-100/60 dark:bg-slate-950/60 border border-slate-200/50 dark:border-slate-800/40 shadow-sm">
+                    <p className="font-bold text-slate-800 dark:text-slate-100 mb-1.5 text-base">
+                      {officeDetailsState.name}
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-4 font-medium text-xs sm:text-sm">
+                      {officeDetailsState.address}
+                    </p>
 
-              {/* NAVIGATOR BUTTONS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <a 
-                  href={officeDetails.googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={playSoftClick}
-                  className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all text-xs hover:border-gold"
-                >
-                  <Navigation className="w-4.5 h-4.5 text-gold" />
-                  <span>Buka di Google Maps</span>
-                </a>
-                <a 
-                  href={officeDetails.wazeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={playSoftClick}
-                  className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all text-xs hover:border-turquoise"
-                >
-                  <Navigation className="w-4.5 h-4.5 text-turquoise" />
-                  <span>Buka di Waze</span>
-                </a>
-              </div>
+                    {/* COPY ADDRESS INTERACTION */}
+                    <button 
+                      onClick={() => {
+                        playSoftClick();
+                        navigator.clipboard.writeText(officeDetailsState.address).then(() => {
+                          setCopiedAddress(true);
+                          setTimeout(() => setCopiedAddress(false), 2000);
+                        });
+                      }}
+                      className="flex items-center gap-2 text-xs font-bold text-white bg-gold hover:bg-gold/90 px-4 py-2.5 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                    >
+                      {copiedAddress ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Alamat Berhasil Disalin!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Salin Alamat Lengkap</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* REAL INTERACTIVE MAP CARD */}
+                  <div className="relative h-56 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shadow-md">
+                    <iframe
+                      title="Peta Lokasi"
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent(officeDetailsState.name + ", " + officeDetailsState.address)}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+                      className={`w-full h-full border-0 ${isDark ? 'invert-[0.9] hue-rotate-180 grayscale-[0.2]' : ''}`}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    ></iframe>
+                  </div>
+
+                  {/* NAVIGATOR BUTTONS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <a 
+                      href={officeDetailsState.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={playSoftClick}
+                      className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all text-xs hover:border-gold"
+                    >
+                      <Navigation className="w-4.5 h-4.5 text-gold" />
+                      <span>Buka di Google Maps</span>
+                    </a>
+                    <a 
+                      href={officeDetailsState.wazeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={playSoftClick}
+                      className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all text-xs hover:border-turquoise"
+                    >
+                      <Navigation className="w-4.5 h-4.5 text-turquoise" />
+                      <span>Buka di Waze</span>
+                    </a>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
@@ -875,7 +1449,7 @@ export default function App() {
 
       {/* 4. SHARE MENU MODAL */}
       {activeModal === 'share' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-md rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
@@ -1012,7 +1586,7 @@ export default function App() {
 
       {/* 5. DEFAULT DYNAMIC LINK DETAIL MODAL */}
       {selectedLinkForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-md rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
@@ -1174,6 +1748,255 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* LOGIN MODAL */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+            {/* CLOSE BUTTON */}
+            <button 
+              onClick={() => { playSoftClick(); setShowLoginModal(false); setLoginError(''); }}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* HEADER */}
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-gold mb-3">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                Login Kelola Data
+              </h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                Masukkan kredensial administrator
+              </p>
+            </div>
+
+            {/* FORM */}
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  USERNAME
+                </label>
+                <input 
+                  type="text" 
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-gold/50 text-slate-800 dark:text-slate-100 font-semibold text-sm"
+                  placeholder="admin"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  PASSWORD
+                </label>
+                <input 
+                  type="password" 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 focus:outline-none focus:ring-2 focus:ring-gold/50 text-slate-800 dark:text-slate-100 font-semibold text-sm"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              {loginError && (
+                <p className="text-xs text-red-500 font-bold text-center mt-2">
+                  {loginError}
+                </p>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full py-3 mt-2 rounded-xl bg-gradient-to-r from-gold to-green text-white font-extrabold text-sm shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Masuk Sekarang</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* LINK EDITOR MODAL */}
+      {showLinkEditorModal && editingLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+            {/* CLOSE BUTTON */}
+            <button 
+              onClick={() => { playSoftClick(); setShowLinkEditorModal(false); setEditingLink(null); }}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200/50 dark:border-slate-800/40">
+              <div className="p-2.5 bg-blue-100 dark:bg-blue-950/30 rounded-xl text-blue-600">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                  Atur Detail Tautan
+                </h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
+                  Tambahkan atau ubah data shortlink
+                </p>
+              </div>
+            </div>
+
+            {/* FORM */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveLink(editingLink); }} className="space-y-4 text-xs">
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-1">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    EMOJI
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editingLink.emoji || ''}
+                    onChange={(e) => setEditingLink({...editingLink, emoji: e.target.value})}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-center text-lg focus:outline-none focus:ring-1.5 focus:ring-blue-500"
+                    placeholder="🔗"
+                    required
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    JUDUL TAUTAN
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editingLink.title || ''}
+                    onChange={(e) => setEditingLink({...editingLink, title: e.target.value})}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-bold"
+                    placeholder="Profil Lengkap PCA"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  SUBJUDUL (DESKRIPSI SINGKAT)
+                </label>
+                <input 
+                  type="text" 
+                  value={editingLink.subtitle || ''}
+                  onChange={(e) => setEditingLink({...editingLink, subtitle: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                  placeholder="Sejarah, visi, dan perjuangan dakwah"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  URL TUJUAN / TARGET LINK
+                </label>
+                <input 
+                  type="text" 
+                  value={editingLink.url || ''}
+                  onChange={(e) => setEditingLink({...editingLink, url: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-mono text-xs"
+                  placeholder="https://example.com atau #profile"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    KATEGORI
+                  </label>
+                  <select
+                    value={editingLink.category || 'internal'}
+                    onChange={(e) => setEditingLink({...editingLink, category: e.target.value as any})}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-semibold"
+                  >
+                    <option value="internal">Internal (Modal/Popup)</option>
+                    <option value="social">Social Media (Eksternal)</option>
+                    <option value="contact">Contact/Layanan Pintar</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    BADGE (OPSIONAL)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editingLink.badge || ''}
+                    onChange={(e) => setEditingLink({...editingLink, badge: e.target.value})}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                    placeholder="Baru / Resmi / 24 Jam"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 pt-4">
+                  <input 
+                    type="checkbox" 
+                    id="isModalCheckbox"
+                    checked={editingLink.isModal || false}
+                    onChange={(e) => setEditingLink({...editingLink, isModal: e.target.checked})}
+                    className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
+                  />
+                  <label htmlFor="isModalCheckbox" className="font-bold text-slate-700 dark:text-slate-300 select-none">
+                    Buka dalam Modal?
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    WARNA BADGE (CSS CLASS)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editingLink.badgeColor || ''}
+                    onChange={(e) => setEditingLink({...editingLink, badgeColor: e.target.value})}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                    placeholder="bg-amber-100 text-amber-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                  DESKRIPSI DETAIL (DITAMPILKAN DI MODAL)
+                </label>
+                <textarea 
+                  value={editingLink.description || ''}
+                  onChange={(e) => setEditingLink({...editingLink, description: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                  placeholder="Berikan info detail lengkap mengenai tautan resmi ini..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Perubahan</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { playSoftClick(); setShowLinkEditorModal(false); setEditingLink(null); }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
