@@ -96,7 +96,13 @@ function doGet(e) {
   } else {
     boardConfigData = {
       boardIntro: "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:",
-      boardQuote: "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan."
+      boardQuote: "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan.",
+      profileMenuTitle: "Profil PCA Klaten Utara",
+      profileMenuSubtitle: "Sejarah, Visi, Misi & Syiar Organisasi",
+      boardMenuTitle: "Pengurus Harian PCA Klaten Utara",
+      boardMenuSubtitle: "Masa Jabatan Aktif & Koordinator Majelis Bidang",
+      addressMenuTitle: "Lokasi Kantor PCA Klaten Utara",
+      addressMenuSubtitle: "Alamat Gedung Dakwah & Integrasi Peta Navigasi"
     };
   }
   
@@ -234,6 +240,13 @@ function doPost(e) {
     var achStr = Array.isArray(prof.achievements) ? JSON.stringify(prof.achievements) : (prof.achievements || "[]");
     profileSheet.appendRow([prof.history || "", prof.vision || "", missionStr, achStr]);
     
+    var configUpdate = {};
+    if (postData.profileMenuTitle !== undefined) configUpdate.profileMenuTitle = postData.profileMenuTitle;
+    if (postData.profileMenuSubtitle !== undefined) configUpdate.profileMenuSubtitle = postData.profileMenuSubtitle;
+    if (Object.keys(configUpdate).length > 0) {
+      updateBoardConfig(ss, configUpdate);
+    }
+    
     if (logSheet) {
       logSheet.appendRow([new Date(), "save_profile", "Profil Organisasi", "Admin Panel", "Memperbarui Sejarah, Visi, Misi"]);
     }
@@ -252,14 +265,13 @@ function doPost(e) {
       }
     }
     
-    if (postData.boardIntro || postData.boardQuote) {
-      var boardConfigSheet = ss.getSheetByName("BoardConfig") || createBoardConfigSheet(ss);
-      boardConfigSheet.clear();
-      boardConfigSheet.appendRow(["boardIntro", "boardQuote"]);
-      boardConfigSheet.appendRow([
-        postData.boardIntro || "",
-        postData.boardQuote || ""
-      ]);
+    var configUpdate = {};
+    if (postData.boardIntro !== undefined) configUpdate.boardIntro = postData.boardIntro;
+    if (postData.boardQuote !== undefined) configUpdate.boardQuote = postData.boardQuote;
+    if (postData.boardMenuTitle !== undefined) configUpdate.boardMenuTitle = postData.boardMenuTitle;
+    if (postData.boardMenuSubtitle !== undefined) configUpdate.boardMenuSubtitle = postData.boardMenuSubtitle;
+    if (Object.keys(configUpdate).length > 0) {
+      updateBoardConfig(ss, configUpdate);
     }
     
     if (logSheet) {
@@ -274,6 +286,13 @@ function doPost(e) {
     officeSheet.appendRow(["name", "address", "googleMapsUrl", "wazeUrl", "phone", "email"]);
     var o = postData.office;
     officeSheet.appendRow([o.name || "", o.address || "", o.googleMapsUrl || "", o.wazeUrl || "", o.phone || "", o.email || ""]);
+    
+    var configUpdate = {};
+    if (postData.addressMenuTitle !== undefined) configUpdate.addressMenuTitle = postData.addressMenuTitle;
+    if (postData.addressMenuSubtitle !== undefined) configUpdate.addressMenuSubtitle = postData.addressMenuSubtitle;
+    if (Object.keys(configUpdate).length > 0) {
+      updateBoardConfig(ss, configUpdate);
+    }
     
     if (logSheet) {
       logSheet.appendRow([new Date(), "save_office", "Detail Kantor", "Admin Panel", "Memperbarui alamat dan peta lokasi"]);
@@ -301,6 +320,30 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify({status: "success"}))
     .setMimeType(ContentService.MimeType.JSON)
     .setHeader("Access-Control-Allow-Origin", "*");
+}
+
+function updateBoardConfig(ss, keyValues) {
+  var boardConfigSheet = ss.getSheetByName("BoardConfig") || createBoardConfigSheet(ss);
+  var configRows = getSheetRowsAsJson(boardConfigSheet);
+  var currentConfig = configRows.length > 0 ? configRows[0] : {};
+  
+  for (var key in keyValues) {
+    currentConfig[key] = keyValues[key];
+  }
+  
+  boardConfigSheet.clear();
+  var configHeaders = ["boardIntro", "boardQuote", "profileMenuTitle", "profileMenuSubtitle", "boardMenuTitle", "boardMenuSubtitle", "addressMenuTitle", "addressMenuSubtitle"];
+  boardConfigSheet.appendRow(configHeaders);
+  boardConfigSheet.appendRow([
+    currentConfig.boardIntro || "",
+    currentConfig.boardQuote || "",
+    currentConfig.profileMenuTitle || "",
+    currentConfig.profileMenuSubtitle || "",
+    currentConfig.boardMenuTitle || "",
+    currentConfig.boardMenuSubtitle || "",
+    currentConfig.addressMenuTitle || "",
+    currentConfig.addressMenuSubtitle || ""
+  ]);
 }
 
 function getSheetRowsAsJson(sheet) {
@@ -458,13 +501,19 @@ function createLogsSheet(ss) {
 
 function createBoardConfigSheet(ss) {
   var sheet = ss.insertSheet("BoardConfig");
-  var headers = ["boardIntro", "boardQuote"];
+  var headers = ["boardIntro", "boardQuote", "profileMenuTitle", "profileMenuSubtitle", "boardMenuTitle", "boardMenuSubtitle", "addressMenuTitle", "addressMenuSubtitle"];
   sheet.appendRow(headers);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#FFF2CC");
   
   var defaultIntro = "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:";
   var defaultQuote = "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan.";
-  sheet.appendRow([defaultIntro, defaultQuote]);
+  var defaultProfileTitle = "Profil PCA Klaten Utara";
+  var defaultProfileSubtitle = "Sejarah, Visi, Misi & Syiar Organisasi";
+  var defaultBoardTitle = "Pengurus Harian PCA Klaten Utara";
+  var defaultBoardSubtitle = "Masa Jabatan Aktif & Koordinator Majelis Bidang";
+  var defaultAddressTitle = "Lokasi Kantor PCA Klaten Utara";
+  var defaultAddressSubtitle = "Alamat Gedung Dakwah & Integrasi Peta Navigasi";
+  sheet.appendRow([defaultIntro, defaultQuote, defaultProfileTitle, defaultProfileSubtitle, defaultBoardTitle, defaultBoardSubtitle, defaultAddressTitle, defaultAddressSubtitle]);
   return sheet;
 }
 `;
@@ -587,6 +636,52 @@ export default function App() {
   });
   const [boardIntroForm, setBoardIntroForm] = useState('');
   const [boardQuoteForm, setBoardQuoteForm] = useState('');
+
+  // Editable Menu Titles & Subtitles
+  const [profileMenuTitle, setProfileMenuTitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_profile_menu_title') || "Profil PCA Klaten Utara";
+    }
+    return "Profil PCA Klaten Utara";
+  });
+  const [profileMenuSubtitle, setProfileMenuSubtitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_profile_menu_subtitle') || "Sejarah, Visi, Misi & Syiar Organisasi";
+    }
+    return "Sejarah, Visi, Misi & Syiar Organisasi";
+  });
+  const [profileMenuTitleForm, setProfileMenuTitleForm] = useState('');
+  const [profileMenuSubtitleForm, setProfileMenuSubtitleForm] = useState('');
+
+  const [boardMenuTitle, setBoardMenuTitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_board_menu_title') || "Pengurus Harian PCA Klaten Utara";
+    }
+    return "Pengurus Harian PCA Klaten Utara";
+  });
+  const [boardMenuSubtitle, setBoardMenuSubtitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_board_menu_subtitle') || "Masa Jabatan Aktif & Koordinator Majelis Bidang";
+    }
+    return "Masa Jabatan Aktif & Koordinator Majelis Bidang";
+  });
+  const [boardMenuTitleForm, setBoardMenuTitleForm] = useState('');
+  const [boardMenuSubtitleForm, setBoardMenuSubtitleForm] = useState('');
+
+  const [addressMenuTitle, setAddressMenuTitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_address_menu_title') || "Lokasi Kantor PCA Klaten Utara";
+    }
+    return "Lokasi Kantor PCA Klaten Utara";
+  });
+  const [addressMenuSubtitle, setAddressMenuSubtitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_address_menu_subtitle') || "Alamat Gedung Dakwah & Integrasi Peta Navigasi";
+    }
+    return "Alamat Gedung Dakwah & Integrasi Peta Navigasi";
+  });
+  const [addressMenuTitleForm, setAddressMenuTitleForm] = useState('');
+  const [addressMenuSubtitleForm, setAddressMenuSubtitleForm] = useState('');
 
   const [officeDetailsState, setOfficeDetailsState] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -745,6 +840,30 @@ export default function App() {
             setBoardQuote(data.boardConfig.boardQuote);
             localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
           }
+          if (data.boardConfig.profileMenuTitle) {
+            setProfileMenuTitle(data.boardConfig.profileMenuTitle);
+            localStorage.setItem('pca_profile_menu_title', data.boardConfig.profileMenuTitle);
+          }
+          if (data.boardConfig.profileMenuSubtitle) {
+            setProfileMenuSubtitle(data.boardConfig.profileMenuSubtitle);
+            localStorage.setItem('pca_profile_menu_subtitle', data.boardConfig.profileMenuSubtitle);
+          }
+          if (data.boardConfig.boardMenuTitle) {
+            setBoardMenuTitle(data.boardConfig.boardMenuTitle);
+            localStorage.setItem('pca_board_menu_title', data.boardConfig.boardMenuTitle);
+          }
+          if (data.boardConfig.boardMenuSubtitle) {
+            setBoardMenuSubtitle(data.boardConfig.boardMenuSubtitle);
+            localStorage.setItem('pca_board_menu_subtitle', data.boardConfig.boardMenuSubtitle);
+          }
+          if (data.boardConfig.addressMenuTitle) {
+            setAddressMenuTitle(data.boardConfig.addressMenuTitle);
+            localStorage.setItem('pca_address_menu_title', data.boardConfig.addressMenuTitle);
+          }
+          if (data.boardConfig.addressMenuSubtitle) {
+            setAddressMenuSubtitle(data.boardConfig.addressMenuSubtitle);
+            localStorage.setItem('pca_address_menu_subtitle', data.boardConfig.addressMenuSubtitle);
+          }
         }
         
         if (data.office && typeof data.office === 'object' && data.office.name) {
@@ -854,6 +973,30 @@ export default function App() {
             if (data.boardConfig.boardQuote) {
               setBoardQuote(data.boardConfig.boardQuote);
               localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
+            }
+            if (data.boardConfig.profileMenuTitle) {
+              setProfileMenuTitle(data.boardConfig.profileMenuTitle);
+              localStorage.setItem('pca_profile_menu_title', data.boardConfig.profileMenuTitle);
+            }
+            if (data.boardConfig.profileMenuSubtitle) {
+              setProfileMenuSubtitle(data.boardConfig.profileMenuSubtitle);
+              localStorage.setItem('pca_profile_menu_subtitle', data.boardConfig.profileMenuSubtitle);
+            }
+            if (data.boardConfig.boardMenuTitle) {
+              setBoardMenuTitle(data.boardConfig.boardMenuTitle);
+              localStorage.setItem('pca_board_menu_title', data.boardConfig.boardMenuTitle);
+            }
+            if (data.boardConfig.boardMenuSubtitle) {
+              setBoardMenuSubtitle(data.boardConfig.boardMenuSubtitle);
+              localStorage.setItem('pca_board_menu_subtitle', data.boardConfig.boardMenuSubtitle);
+            }
+            if (data.boardConfig.addressMenuTitle) {
+              setAddressMenuTitle(data.boardConfig.addressMenuTitle);
+              localStorage.setItem('pca_address_menu_title', data.boardConfig.addressMenuTitle);
+            }
+            if (data.boardConfig.addressMenuSubtitle) {
+              setAddressMenuSubtitle(data.boardConfig.addressMenuSubtitle);
+              localStorage.setItem('pca_address_menu_subtitle', data.boardConfig.addressMenuSubtitle);
             }
           }
           
@@ -1049,6 +1192,12 @@ export default function App() {
     setBoardQuote(boardQuoteForm);
     localStorage.setItem('pca_board_quote', boardQuoteForm);
 
+    setBoardMenuTitle(boardMenuTitleForm);
+    localStorage.setItem('pca_board_menu_title', boardMenuTitleForm);
+
+    setBoardMenuSubtitle(boardMenuSubtitleForm);
+    localStorage.setItem('pca_board_menu_subtitle', boardMenuSubtitleForm);
+
     // Sync board to Google Spreadsheet
     if (appsScriptUrl) {
       fetch(appsScriptUrl, {
@@ -1059,19 +1208,27 @@ export default function App() {
           action: 'save_board',
           board: boardForm,
           boardIntro: boardIntroForm,
-          boardQuote: boardQuoteForm
+          boardQuote: boardQuoteForm,
+          boardMenuTitle: boardMenuTitleForm,
+          boardMenuSubtitle: boardMenuSubtitleForm
         })
       }).catch(err => console.warn("Gagal mensinkronisasi data Pengurus ke Google Sheets:", err));
     }
 
     setIsEditingBoard(false);
-    alert("Daftar Pengurus beserta kutipan pengantar berhasil disimpan dan disinkronkan ke Google Sheets!");
+    alert("Daftar Pengurus beserta kutipan pengantar dan keterangan menu berhasil disimpan dan disinkronkan ke Google Sheets!");
   };
 
   const handleSaveOfficeDetails = () => {
     playSoftClick();
     setOfficeDetailsState(officeForm);
     localStorage.setItem('pca_office_details', JSON.stringify(officeForm));
+
+    setAddressMenuTitle(addressMenuTitleForm);
+    localStorage.setItem('pca_address_menu_title', addressMenuTitleForm);
+
+    setAddressMenuSubtitle(addressMenuSubtitleForm);
+    localStorage.setItem('pca_address_menu_subtitle', addressMenuSubtitleForm);
 
     // Sync office details to Google Spreadsheet
     if (appsScriptUrl) {
@@ -1081,13 +1238,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_office',
-          office: officeForm
+          office: officeForm,
+          addressMenuTitle: addressMenuTitleForm,
+          addressMenuSubtitle: addressMenuSubtitleForm
         })
       }).catch(err => console.warn("Gagal mensinkronisasi data Alamat ke Google Sheets:", err));
     }
 
     setIsEditingOffice(false);
-    alert("Detail Alamat berhasil disimpan dan disinkronkan ke Google Sheets!");
+    alert("Detail Alamat beserta keterangan menu berhasil disimpan dan disinkronkan ke Google Sheets!");
   };
 
   const handleSaveProfileDetails = () => {
@@ -1097,6 +1256,12 @@ export default function App() {
     setSubBranchesState(subBranchesForm);
     localStorage.setItem('pca_sub_branches', JSON.stringify(subBranchesForm));
 
+    setProfileMenuTitle(profileMenuTitleForm);
+    localStorage.setItem('pca_profile_menu_title', profileMenuTitleForm);
+
+    setProfileMenuSubtitle(profileMenuSubtitleForm);
+    localStorage.setItem('pca_profile_menu_subtitle', profileMenuSubtitleForm);
+
     // Sync profile & sub-branches to Google Spreadsheet
     if (appsScriptUrl) {
       fetch(appsScriptUrl, {
@@ -1105,7 +1270,9 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_profile',
-          profile: profileForm
+          profile: profileForm,
+          profileMenuTitle: profileMenuTitleForm,
+          profileMenuSubtitle: profileMenuSubtitleForm
         })
       }).catch(err => console.warn("Gagal mensinkronisasi data Profil ke Google Sheets:", err));
 
@@ -1369,7 +1536,7 @@ export default function App() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-base text-slate-800 dark:text-slate-100 tracking-tight leading-snug">
-                      {link.title}
+                      {link.id === 'profile' ? profileMenuTitle : link.id === 'board' ? boardMenuTitle : link.id === 'address' ? addressMenuTitle : link.title}
                     </span>
                     {link.badge && (
                       <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold select-none ${
@@ -1379,9 +1546,9 @@ export default function App() {
                       </span>
                     )}
                   </div>
-                  {link.subtitle && (
+                  {(link.subtitle || link.id === 'profile' || link.id === 'board' || link.id === 'address') && (
                     <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5 font-medium">
-                      {link.subtitle}
+                      {link.id === 'profile' ? profileMenuSubtitle : link.id === 'board' ? boardMenuSubtitle : link.id === 'address' ? addressMenuSubtitle : link.subtitle}
                     </p>
                   )}
                 </div>
@@ -1453,13 +1620,33 @@ export default function App() {
               <div className="p-3 bg-amber-100/60 dark:bg-amber-950/30 rounded-2xl text-gold">
                 <Award className="w-6 h-6" />
               </div>
-              <div className="flex-1 col">
+              <div className="flex-1 min-w-0">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                  Profil PCA Klaten Utara
+                  {isEditingProfile ? (
+                    <input 
+                      type="text"
+                      value={profileMenuTitleForm}
+                      onChange={(e) => setProfileMenuTitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-sm rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-extrabold"
+                      placeholder="Judul Menu Profil"
+                    />
+                  ) : (
+                    profileMenuTitle
+                  )}
                 </h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
-                  Sejarah, Visi, Misi & Syiar Organisasi
-                </p>
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                  {isEditingProfile ? (
+                    <input 
+                      type="text"
+                      value={profileMenuSubtitleForm}
+                      onChange={(e) => setProfileMenuSubtitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 font-semibold"
+                      placeholder="Sub-judul/Keterangan Menu Profil"
+                    />
+                  ) : (
+                    profileMenuSubtitle
+                  )}
+                </div>
               </div>
 
               {/* ADMIN EDIT PROFILE ACTION */}
@@ -1490,6 +1677,8 @@ export default function App() {
                           mission: [...(profileDetailsState.mission || [])], 
                           achievements: [...(profileDetailsState.achievements || [])] 
                         });
+                        setProfileMenuTitleForm(profileMenuTitle);
+                        setProfileMenuSubtitleForm(profileMenuSubtitle);
                         setSubBranchesForm(subBranchesState.map(ran => ({ ...ran })));
                         setIsEditingProfile(true);
                       }}
@@ -1755,13 +1944,33 @@ export default function App() {
               <div className="p-3 bg-teal-100/60 dark:bg-teal-950/30 rounded-2xl text-green">
                 <Users className="w-6 h-6" />
               </div>
-              <div className="flex-1 col">
+              <div className="flex-1 min-w-0">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                  Pengurus Harian PCA Klaten Utara
+                  {isEditingBoard ? (
+                    <input 
+                      type="text"
+                      value={boardMenuTitleForm}
+                      onChange={(e) => setBoardMenuTitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-sm rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-extrabold"
+                      placeholder="Judul Menu Pengurus"
+                    />
+                  ) : (
+                    boardMenuTitle
+                  )}
                 </h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
-                  Masa Jabatan Aktif & Koordinator Majelis Bidang
-                </p>
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                  {isEditingBoard ? (
+                    <input 
+                      type="text"
+                      value={boardMenuSubtitleForm}
+                      onChange={(e) => setBoardMenuSubtitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 font-semibold"
+                      placeholder="Sub-judul/Keterangan Menu Pengurus"
+                    />
+                  ) : (
+                    boardMenuSubtitle
+                  )}
+                </div>
               </div>
 
               {/* ADMIN EDIT BOARD MEMBERS */}
@@ -1789,6 +1998,8 @@ export default function App() {
                         setBoardForm([...boardMembersState]);
                         setBoardIntroForm(boardIntro);
                         setBoardQuoteForm(boardQuote);
+                        setBoardMenuTitleForm(boardMenuTitle);
+                        setBoardMenuSubtitleForm(boardMenuSubtitle);
                         setIsEditingBoard(true);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
@@ -1959,13 +2170,33 @@ export default function App() {
               <div className="p-3 bg-amber-100/60 dark:bg-amber-950/30 rounded-2xl text-gold">
                 <MapPin className="w-6 h-6" />
               </div>
-              <div className="flex-1 col">
+              <div className="flex-1 min-w-0">
                 <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                  Lokasi Kantor PCA Klaten Utara
+                  {isEditingOffice ? (
+                    <input 
+                      type="text"
+                      value={addressMenuTitleForm}
+                      onChange={(e) => setAddressMenuTitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-sm rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-extrabold"
+                      placeholder="Judul Menu Alamat"
+                    />
+                  ) : (
+                    addressMenuTitle
+                  )}
                 </h3>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
-                  Alamat Gedung Dakwah & Integrasi Peta Navigasi
-                </p>
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                  {isEditingOffice ? (
+                    <input 
+                      type="text"
+                      value={addressMenuSubtitleForm}
+                      onChange={(e) => setAddressMenuSubtitleForm(e.target.value)}
+                      className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-500 font-semibold"
+                      placeholder="Sub-judul/Keterangan Menu Alamat"
+                    />
+                  ) : (
+                    addressMenuSubtitle
+                  )}
+                </div>
               </div>
 
               {/* ADMIN EDIT OFFICE ACTION */}
@@ -1991,6 +2222,8 @@ export default function App() {
                       onClick={() => {
                         playSoftClick();
                         setOfficeForm({ ...officeDetailsState });
+                        setAddressMenuTitleForm(addressMenuTitle);
+                        setAddressMenuSubtitleForm(addressMenuSubtitle);
                         setIsEditingOffice(true);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
