@@ -58,37 +58,71 @@ function playModalOpenSound() {
   }
 }
 
-const appsScriptCode = `// GOOGLE APPS SCRIPT: SINKRONISASI SHORTLINK PCA KLATEN UTARA (UPGRADED)
+const appsScriptCode = `// GOOGLE APPS SCRIPT: SINKRONISASI INTEGRAL PCA KLATEN UTARA (UPGRADED MULTI-SHEET)
 // Copy seluruh kode ini dan paste di Extensions > Apps Script (Ekstensi > Apps Script) pada Google Sheet Anda.
 
 function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Links") || createLinksSheet(ss);
   
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-  var jsonArray = [];
+  // Memastikan semua sheet tersedia. Jika tidak ada, buat baru dengan data default yang rapi.
+  var linksSheet = ss.getSheetByName("Links") || createLinksSheet(ss);
+  var profileSheet = ss.getSheetByName("Profile") || createProfileSheet(ss);
+  var boardSheet = ss.getSheetByName("Board") || createBoardSheet(ss);
+  var officeSheet = ss.getSheetByName("Office") || createOfficeSheet(ss);
+  var subBranchesSheet = ss.getSheetByName("SubBranches") || createSubBranchesSheet(ss);
+  var boardConfigSheet = ss.getSheetByName("BoardConfig") || createBoardConfigSheet(ss);
   
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var record = {};
-    for (var j = 0; j < headers.length; j++) {
-      var key = headers[j].toString().trim();
-      var val = row[j];
-      
-      if (key === "isModal") {
-        record[key] = (val === "TRUE" || val === true || val === 1 || val.toString().toLowerCase() === "true");
-      } else if (key === "clicks") {
-        record[key] = parseInt(val || 0);
-      } else {
-        record[key] = val;
-      }
-    }
-    jsonArray.push(record);
+  // Ambil semua data sebagai array JSON
+  var linksData = getSheetRowsAsJson(linksSheet);
+  
+  var profileData = {};
+  var profileRows = getSheetRowsAsJson(profileSheet);
+  if (profileRows.length > 0) {
+    var p = profileRows[0];
+    profileData = {
+      history: p.history || "",
+      vision: p.vision || "",
+      mission: parseJsonOrString(p.mission),
+      achievements: parseJsonOrString(p.achievements)
+    };
   }
   
-  return ContentService.createTextOutput(JSON.stringify(jsonArray))
-    .setMimeType(ContentService.MimeType.JSON);
+  var boardData = getSheetRowsAsJson(boardSheet);
+  
+  var boardConfigData = {};
+  var boardConfigRows = getSheetRowsAsJson(boardConfigSheet);
+  if (boardConfigRows.length > 0) {
+    boardConfigData = boardConfigRows[0];
+  } else {
+    boardConfigData = {
+      boardIntro: "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:",
+      boardQuote: "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan."
+    };
+  }
+  
+  var officeData = {};
+  var officeRows = getSheetRowsAsJson(officeSheet);
+  if (officeRows.length > 0) {
+    officeData = officeRows[0];
+  }
+  
+  var subBranchesData = getSheetRowsAsJson(subBranchesSheet);
+  
+  // Gabungkan semua data dalam satu respon JSON yang utuh
+  var responseData = {
+    links: linksData,
+    profile: profileData,
+    board: boardData,
+    boardConfig: boardConfigData,
+    office: officeData,
+    sub_branches: subBranchesData
+  };
+  
+  return ContentService.createTextOutput(JSON.stringify(responseData))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function doPost(e) {
@@ -101,7 +135,8 @@ function doPost(e) {
     postData = JSON.parse(e.postData.contents);
   } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid JSON: " + err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
   }
   
   var action = postData.action;
@@ -191,7 +226,7 @@ function doPost(e) {
 
   // 5. UPDATE PROFILE DATA
   if (action === "save_profile" && postData.profile) {
-    var profileSheet = ss.getSheetByName("Profile") || ss.insertSheet("Profile");
+    var profileSheet = ss.getSheetByName("Profile") || createProfileSheet(ss);
     profileSheet.clear();
     profileSheet.appendRow(["history", "vision", "mission", "achievements"]);
     var prof = postData.profile;
@@ -206,7 +241,7 @@ function doPost(e) {
 
   // 6. UPDATE BOARD MEMBERS DATA
   if (action === "save_board" && postData.board) {
-    var boardSheet = ss.getSheetByName("Board") || ss.insertSheet("Board");
+    var boardSheet = ss.getSheetByName("Board") || createBoardSheet(ss);
     boardSheet.clear();
     boardSheet.appendRow(["name", "role", "period", "dept", "photo", "bio"]);
     var boardArr = postData.board;
@@ -217,14 +252,24 @@ function doPost(e) {
       }
     }
     
+    if (postData.boardIntro || postData.boardQuote) {
+      var boardConfigSheet = ss.getSheetByName("BoardConfig") || createBoardConfigSheet(ss);
+      boardConfigSheet.clear();
+      boardConfigSheet.appendRow(["boardIntro", "boardQuote"]);
+      boardConfigSheet.appendRow([
+        postData.boardIntro || "",
+        postData.boardQuote || ""
+      ]);
+    }
+    
     if (logSheet) {
-      logSheet.appendRow([new Date(), "save_board", "Pengurus Harian", "Admin Panel", "Memperbarui daftar struktur organisasi"]);
+      logSheet.appendRow([new Date(), "save_board", "Pengurus Harian", "Admin Panel", "Memperbarui daftar struktur organisasi, pengantar dan kutipan"]);
     }
   }
 
   // 7. UPDATE OFFICE DETAILS DATA
   if (action === "save_office" && postData.office) {
-    var officeSheet = ss.getSheetByName("Office") || ss.insertSheet("Office");
+    var officeSheet = ss.getSheetByName("Office") || createOfficeSheet(ss);
     officeSheet.clear();
     officeSheet.appendRow(["name", "address", "googleMapsUrl", "wazeUrl", "phone", "email"]);
     var o = postData.office;
@@ -237,7 +282,7 @@ function doPost(e) {
 
   // 8. UPDATE SUB BRANCHES DATA
   if (action === "save_sub_branches" && postData.sub_branches) {
-    var subSheet = ss.getSheetByName("SubBranches") || ss.insertSheet("SubBranches");
+    var subSheet = ss.getSheetByName("SubBranches") || createSubBranchesSheet(ss);
     subSheet.clear();
     subSheet.appendRow(["name", "location"]);
     var subArr = postData.sub_branches;
@@ -254,7 +299,44 @@ function doPost(e) {
   }
   
   return ContentService.createTextOutput(JSON.stringify({status: "success"}))
-    .setMimeType(ContentService.MimeType.JSON);
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*");
+}
+
+function getSheetRowsAsJson(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  var headers = data[0];
+  var jsonArray = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var record = {};
+    for (var j = 0; j < headers.length; j++) {
+      var key = headers[j].toString().trim();
+      var val = row[j];
+      
+      if (key === "isModal") {
+        record[key] = (val === "TRUE" || val === true || val === 1 || val.toString().toLowerCase() === "true");
+      } else if (key === "clicks") {
+        record[key] = parseInt(val || 0);
+      } else {
+        record[key] = val;
+      }
+    }
+    jsonArray.push(record);
+  }
+  return jsonArray;
+}
+
+function parseJsonOrString(val) {
+  if (!val) return [];
+  try {
+    var parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [val];
+  } catch (e) {
+    return [val];
+  }
 }
 
 function createLinksSheet(ss) {
@@ -278,7 +360,91 @@ function createLinksSheet(ss) {
   for (var i = 0; i < defaultLinks.length; i++) {
     sheet.appendRow(defaultLinks[i]);
   }
+  return sheet;
+}
+
+function createProfileSheet(ss) {
+  var sheet = ss.insertSheet("Profile");
+  var headers = ["history", "vision", "mission", "achievements"];
+  sheet.appendRow(headers);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#D9EAF7");
   
+  var defaultHistory = "Pimpinan Cabang 'Aisyiyah (PCA) Klaten Utara berdiri sebagai garda terdepan dakwah Islam berkemajuan bagi perempuan di wilayah Klaten Utara, membina berbagai ranting, menggerakkan pengajian, pemberdayaan ekonomi perempuan, pembinaan kesehatan ibu-anak, serta mengelola berbagai Amal Usaha 'Aisyiyah.";
+  var defaultVision = "Menjadi organisasi perempuan Islam berkemajuan yang unggul dalam pemberdayaan perempuan, pendidikan keluarga, dan dakwah syiar untuk kemaslahatan umat.";
+  var defaultMission = JSON.stringify([
+    "Menanamkan keyakinan dan memperteguh syiar Islam berkemajuan di lingkungan keluarga.",
+    "Meningkatkan kualitas hidup perempuan melalui pendidikan, dakwah keagamaan, kesehatan, dan ekonomi produktif.",
+    "Menggerakkan kepemimpinan perempuan secara aktif dalam kemasyarakatan."
+  ]);
+  var defaultAchievements = JSON.stringify([
+    "Pelopor pengajian rutin bulanan keliling terpadu di tingkat cabang & ranting.",
+    "Pemberdayaan UMKM binaan melalui koperasi syariah 'Aisyiyah Klaten Utara.",
+    "Bakti sosial rutin pembagian sembako dhuafa di setiap bulan Ramadhan."
+  ]);
+  
+  sheet.appendRow([defaultHistory, defaultVision, defaultMission, defaultAchievements]);
+  return sheet;
+}
+
+function createBoardSheet(ss) {
+  var sheet = ss.insertSheet("Board");
+  var headers = ["name", "role", "period", "dept", "photo", "bio"];
+  sheet.appendRow(headers);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#E2F0D9");
+  
+  var defaultBoard = [
+    ["Hj. Sri Setyaningsih, S.Pd.", "Ketua Umum", "2022 - 2027", "Pimpinan Harian", "", "Bertanggung jawab atas koordinasi umum, arah kebijakan syiar, dan relasi eksternal cabang."],
+    ["Hj. Siti Aminah, S.Ag.", "Wakil Ketua I", "2022 - 2027", "Pimpinan Harian", "", "Membidangi pembinaan program Majelis Tabligh, Pembinaan Ranting, dan Amal Usaha Pendidikan."],
+    ["Dra. Hj. Wahyuni", "Wakil Ketua II", "2022 - 2027", "Pimpinan Harian", "", "Fokus pada penguatan pemberdayaan ekonomi keluarga sakinah, Majelis Kesehatan, dan Kesejahteraan Sosial."],
+    ["Sri Lestari, S.Pd.I.", "Sekretaris", "2022 - 2027", "Sekretariat", "", "Mengelola tata persuratan, pengarsipan kegiatan syiar, dokumentasi rapat, dan pusat data organisasi."],
+    ["Hj. Sumarsih", "Bendahara", "2022 - 2027", "Keuangan", "", "Mengatur sirkulasi dana infaq, pengelolaan anggaran amal usaha, pengajian, dan laporan keuangan berkala."]
+  ];
+  
+  for (var i = 0; i < defaultBoard.length; i++) {
+    sheet.appendRow(defaultBoard[i]);
+  }
+  return sheet;
+}
+
+function createOfficeSheet(ss) {
+  var sheet = ss.insertSheet("Office");
+  var headers = ["name", "address", "googleMapsUrl", "wazeUrl", "phone", "email"];
+  sheet.appendRow(headers);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#FCE4D6");
+  
+  var defaultOffice = [
+    "Gedung Dakwah Muhammadiyah Klaten Utara",
+    "Jl. Ki Hajar Dewantara No.24, Gergunung, Kec. Klaten Utara, Kabupaten Klaten, Jawa Tengah 57438",
+    "https://maps.google.com/?q=Gedung+Dakwah+Muhammadiyah+Klaten+Utara",
+    "https://waze.com/ul?q=Gedung+Dakwah+Muhammadiyah+Klaten+Utara",
+    "6285742345590",
+    "pca.klatenutara@gmail.com"
+  ];
+  
+  sheet.appendRow(defaultOffice);
+  return sheet;
+}
+
+function createSubBranchesSheet(ss) {
+  var sheet = ss.insertSheet("SubBranches");
+  var headers = ["name", "location"];
+  sheet.appendRow(headers);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#F2F2F2");
+  
+  var defaultSub = [
+    ["PRA Belang Wetan", "Kelurahan Belang Wetan, Klaten Utara"],
+    ["PRA Gergunung", "Kelurahan Gergunung, Klaten Utara"],
+    ["PRA Bareng Lor", "Kelurahan Bareng Lor, Klaten Utara"],
+    ["PRA Karanganom", "Kelurahan Karanganom, Klaten Utara"],
+    ["PRA Jawi", "Kelurahan Jawi, Klaten Utara"],
+    ["PRA Ketandan", "Kelurahan Ketandan, Klaten Utara"],
+    ["PRA Mayungan", "Kelurahan Mayungan, Klaten Utara"],
+    ["PRA Sekarsuli", "Kelurahan Sekarsuli, Klaten Utara"]
+  ];
+  
+  for (var i = 0; i < defaultSub.length; i++) {
+    sheet.appendRow(defaultSub[i]);
+  }
   return sheet;
 }
 
@@ -287,6 +453,18 @@ function createLogsSheet(ss) {
   var headers = ["Timestamp", "Link ID", "Link Title", "Platform/Device", "Visitor Action"];
   sheet.appendRow(headers);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#D9EAD3");
+  return sheet;
+}
+
+function createBoardConfigSheet(ss) {
+  var sheet = ss.insertSheet("BoardConfig");
+  var headers = ["boardIntro", "boardQuote"];
+  sheet.appendRow(headers);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#FFF2CC");
+  
+  var defaultIntro = "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:";
+  var defaultQuote = "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan.";
+  sheet.appendRow([defaultIntro, defaultQuote]);
   return sheet;
 }
 `;
@@ -395,6 +573,20 @@ export default function App() {
   });
   const [isEditingBoard, setIsEditingBoard] = useState(false);
   const [boardForm, setBoardForm] = useState<any[]>([]);
+  const [boardIntro, setBoardIntro] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_board_intro') || "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:";
+    }
+    return "Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:";
+  });
+  const [boardQuote, setBoardQuote] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pca_board_quote') || "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan.";
+    }
+    return "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan.";
+  });
+  const [boardIntroForm, setBoardIntroForm] = useState('');
+  const [boardQuoteForm, setBoardQuoteForm] = useState('');
 
   const [officeDetailsState, setOfficeDetailsState] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -470,10 +662,23 @@ export default function App() {
   // Track scroll position for header glass layout effects
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
+    let active = false;
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      if (!active) {
+        window.requestAnimationFrame(() => {
+          const isScrolled = window.scrollY > 20;
+          setScrolled(prev => {
+            if (prev !== isScrolled) {
+              return isScrolled;
+            }
+            return prev;
+          });
+          active = false;
+        });
+        active = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -494,13 +699,83 @@ export default function App() {
     localStorage.setItem('pca_link_clicks', JSON.stringify(linkClicks));
   }, [linkClicks]);
 
-  // Load dynamic links from Google Sheet on mount or when appsScriptUrl changes
+  // Load dynamic links & database sheets from Google Sheet on mount or when appsScriptUrl changes
   useEffect(() => {
     if (!appsScriptUrl) {
       setLinks(linksData);
       setSyncStatus('idle');
       return;
     }
+
+    const processSyncedData = (data: any) => {
+      // If it's a combined object containing multiple sheets
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        let hasLinks = false;
+        if (Array.isArray(data.links) && data.links.length > 0) {
+          setLinks(data.links);
+          localStorage.setItem('pca_links_custom', JSON.stringify(data.links));
+          const sheetClicks: Record<string, number> = {};
+          data.links.forEach((link: any) => {
+            if (link.clicks !== undefined) {
+              sheetClicks[link.id] = Number(link.clicks);
+            }
+          });
+          if (Object.keys(sheetClicks).length > 0) {
+            setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+          }
+          hasLinks = true;
+        }
+        
+        if (data.profile && typeof data.profile === 'object' && data.profile.history) {
+          setProfileDetailsState(data.profile);
+          localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
+        }
+        
+        if (Array.isArray(data.board) && data.board.length > 0) {
+          setBoardMembersState(data.board);
+          localStorage.setItem('pca_board_members', JSON.stringify(data.board));
+        }
+
+        if (data.boardConfig && typeof data.boardConfig === 'object') {
+          if (data.boardConfig.boardIntro) {
+            setBoardIntro(data.boardConfig.boardIntro);
+            localStorage.setItem('pca_board_intro', data.boardConfig.boardIntro);
+          }
+          if (data.boardConfig.boardQuote) {
+            setBoardQuote(data.boardConfig.boardQuote);
+            localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
+          }
+        }
+        
+        if (data.office && typeof data.office === 'object' && data.office.name) {
+          setOfficeDetailsState(data.office);
+          localStorage.setItem('pca_office_details', JSON.stringify(data.office));
+        }
+        
+        if (Array.isArray(data.sub_branches) && data.sub_branches.length > 0) {
+          setSubBranchesState(data.sub_branches);
+          localStorage.setItem('pca_sub_branches', JSON.stringify(data.sub_branches));
+        }
+        return hasLinks;
+      }
+      
+      // Backward compatibility flat array fallback
+      if (Array.isArray(data) && data.length > 0) {
+        const sheetClicks: Record<string, number> = {};
+        data.forEach(link => {
+          if (link.clicks !== undefined) {
+            sheetClicks[link.id] = Number(link.clicks);
+          }
+        });
+        if (Object.keys(sheetClicks).length > 0) {
+          setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+        }
+        setLinks(data);
+        localStorage.setItem('pca_links_custom', JSON.stringify(data));
+        return true;
+      }
+      return false;
+    };
     
     const fetchLinks = async () => {
       setIsSyncing(true);
@@ -509,20 +784,10 @@ export default function App() {
         const res = await fetch(appsScriptUrl);
         if (!res.ok) throw new Error("Gagal mengambil respon dari Google Sheet");
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          // Sync live clicks if present in sheet
-          const sheetClicks: Record<string, number> = {};
-          data.forEach(link => {
-            if (link.clicks !== undefined) {
-              sheetClicks[link.id] = Number(link.clicks);
-            }
-          });
-          if (Object.keys(sheetClicks).length > 0) {
-            setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
-          }
-          setLinks(data);
+        const success = processSyncedData(data);
+        if (success) {
           setSyncStatus('success');
-          setSyncMessage('Berhasil mensinkronkan data tautan dari Google Sheets secara langsung!');
+          setSyncMessage('Berhasil mensinkronkan seluruh data dari Google Sheets secara langsung!');
         } else {
           throw new Error("Format data tidak valid");
         }
@@ -551,20 +816,81 @@ export default function App() {
       const res = await fetch(appsScriptUrl);
       if (!res.ok) throw new Error("Gagal mengambil respon");
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const sheetClicks: Record<string, number> = {};
-        data.forEach(link => {
-          if (link.clicks !== undefined) {
-            sheetClicks[link.id] = Number(link.clicks);
+      
+      // Local helper inside manual refresh
+      const processSyncedData = (data: any) => {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          let hasLinks = false;
+          if (Array.isArray(data.links) && data.links.length > 0) {
+            setLinks(data.links);
+            localStorage.setItem('pca_links_custom', JSON.stringify(data.links));
+            const sheetClicks: Record<string, number> = {};
+            data.links.forEach((link: any) => {
+              if (link.clicks !== undefined) {
+                sheetClicks[link.id] = Number(link.clicks);
+              }
+            });
+            if (Object.keys(sheetClicks).length > 0) {
+              setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+            }
+            hasLinks = true;
           }
-        });
-        if (Object.keys(sheetClicks).length > 0) {
-          setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+          
+          if (data.profile && typeof data.profile === 'object' && data.profile.history) {
+            setProfileDetailsState(data.profile);
+            localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
+          }
+          
+          if (Array.isArray(data.board) && data.board.length > 0) {
+            setBoardMembersState(data.board);
+            localStorage.setItem('pca_board_members', JSON.stringify(data.board));
+          }
+
+          if (data.boardConfig && typeof data.boardConfig === 'object') {
+            if (data.boardConfig.boardIntro) {
+              setBoardIntro(data.boardConfig.boardIntro);
+              localStorage.setItem('pca_board_intro', data.boardConfig.boardIntro);
+            }
+            if (data.boardConfig.boardQuote) {
+              setBoardQuote(data.boardConfig.boardQuote);
+              localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
+            }
+          }
+          
+          if (data.office && typeof data.office === 'object' && data.office.name) {
+            setOfficeDetailsState(data.office);
+            localStorage.setItem('pca_office_details', JSON.stringify(data.office));
+          }
+          
+          if (Array.isArray(data.sub_branches) && data.sub_branches.length > 0) {
+            setSubBranchesState(data.sub_branches);
+            localStorage.setItem('pca_sub_branches', JSON.stringify(data.sub_branches));
+          }
+          return hasLinks;
         }
-        setLinks(data);
+        
+        if (Array.isArray(data) && data.length > 0) {
+          const sheetClicks: Record<string, number> = {};
+          data.forEach(link => {
+            if (link.clicks !== undefined) {
+              sheetClicks[link.id] = Number(link.clicks);
+            }
+          });
+          if (Object.keys(sheetClicks).length > 0) {
+            setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+          }
+          setLinks(data);
+          localStorage.setItem('pca_links_custom', JSON.stringify(data));
+          return true;
+        }
+        return false;
+      };
+
+      const success = processSyncedData(data);
+      if (success) {
         setSyncStatus('success');
         setSyncMessage('Sinkronisasi manual berhasil!');
-        alert("Sinkronisasi Berhasil! Semua tautan dan statistik klik dari Google Sheet telah dimuat.");
+        alert("Sinkronisasi Berhasil! Seluruh data (Tautan, Profil, Pengurus, Alamat, Ranting) dan statistik klik dari Google Sheet telah dimuat.");
       } else {
         throw new Error("Format data tidak valid");
       }
@@ -716,6 +1042,12 @@ export default function App() {
     playSoftClick();
     setBoardMembersState(boardForm);
     localStorage.setItem('pca_board_members', JSON.stringify(boardForm));
+    
+    setBoardIntro(boardIntroForm);
+    localStorage.setItem('pca_board_intro', boardIntroForm);
+    
+    setBoardQuote(boardQuoteForm);
+    localStorage.setItem('pca_board_quote', boardQuoteForm);
 
     // Sync board to Google Spreadsheet
     if (appsScriptUrl) {
@@ -725,13 +1057,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_board',
-          board: boardForm
+          board: boardForm,
+          boardIntro: boardIntroForm,
+          boardQuote: boardQuoteForm
         })
       }).catch(err => console.warn("Gagal mensinkronisasi data Pengurus ke Google Sheets:", err));
     }
 
     setIsEditingBoard(false);
-    alert("Daftar Pengurus berhasil disimpan dan disinkronkan ke Google Sheets!");
+    alert("Daftar Pengurus beserta kutipan pengantar berhasil disimpan dan disinkronkan ke Google Sheets!");
   };
 
   const handleSaveOfficeDetails = () => {
@@ -1104,7 +1438,7 @@ export default function App() {
       {/* 1. PROFILE MODAL */}
       {activeModal === 'profile' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
@@ -1406,7 +1740,7 @@ export default function App() {
       {/* 2. BOARD MEMBERS MODAL */}
       {activeModal === 'board' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
@@ -1453,6 +1787,8 @@ export default function App() {
                       onClick={() => {
                         playSoftClick();
                         setBoardForm([...boardMembersState]);
+                        setBoardIntroForm(boardIntro);
+                        setBoardQuoteForm(boardQuote);
                         setIsEditingBoard(true);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1 cursor-pointer"
@@ -1467,20 +1803,52 @@ export default function App() {
 
             {/* CONTENT */}
             <div className="space-y-6">
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                Berikut struktur kepengurusan resmi Pimpinan Cabang 'Aisyiyah Klaten Utara yang mengoordinasikan dakwah serta berbagai amal usaha sosial-pendidikan:
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                {boardIntro}
               </p>
 
               {/* INSPIRATIONAL QUOTE */}
               <div className="text-center p-4.5 rounded-2xl bg-gradient-to-r from-gold/5 via-transparent to-green/5 dark:from-amber-500/5 dark:to-teal-500/5 border border-slate-100 dark:border-slate-800/40">
-                <p className="text-xs italic font-semibold text-slate-600 dark:text-slate-300">
-                  "Menghimpun potensi wanita muslimah untuk mencerdaskan kehidupan beragama dan memberdayakan umat berkemajuan."
+                <p className="text-xs italic font-bold text-slate-700 dark:text-slate-200">
+                  "{boardQuote}"
                 </p>
               </div>
 
               {isEditingBoard ? (
                 <div className="space-y-4">
-                  <div className="flex justify-end">
+                  {/* TEXT EDITORS FOR INTRO & QUOTE */}
+                  <div className="p-4 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 space-y-3">
+                    <h4 className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📝 Edit Kalimat Pengantar & Slogan</span>
+                    </h4>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                        KALIMAT PENGANTAR KEPENGURUSAN
+                      </label>
+                      <textarea
+                        value={boardIntroForm}
+                        onChange={(e) => setBoardIntroForm(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-xs shadow-sm focus:ring-2 focus:ring-green/30 focus:border-green outline-none"
+                        rows={3}
+                        placeholder="Masukkan kalimat pengantar kepengurusan..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                        KUTIPAN / SLOGAN KEPENGURUSAN
+                      </label>
+                      <textarea
+                        value={boardQuoteForm}
+                        onChange={(e) => setBoardQuoteForm(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-xs shadow-sm focus:ring-2 focus:ring-green/30 focus:border-green outline-none"
+                        rows={2}
+                        placeholder="Masukkan slogan kepengurusan..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Daftar Struktur Pengurus:</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -1498,7 +1866,7 @@ export default function App() {
                       <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center gap-3">
                         <div className="flex-1 grid grid-cols-2 gap-3 text-xs">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-400 mb-1">NAMA PENGURUS</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">NAMA PENGURUS</label>
                             <input 
                               type="text" 
                               value={member.name || ''}
@@ -1507,12 +1875,12 @@ export default function App() {
                                 updated[idx] = { ...updated[idx], name: e.target.value };
                                 setBoardForm(updated);
                               }}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-905 text-slate-800 dark:text-slate-100 font-bold"
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-950 dark:text-white font-extrabold focus:ring-2 focus:ring-green/30 focus:border-green outline-none"
                               placeholder="Nama Lengkap"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-400 mb-1">JABATAN</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">JABATAN</label>
                             <input 
                               type="text" 
                               value={member.role || ''}
@@ -1521,7 +1889,7 @@ export default function App() {
                                 updated[idx] = { ...updated[idx], role: e.target.value };
                                 setBoardForm(updated);
                               }}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-905 text-slate-800 dark:text-slate-100 font-bold"
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-950 dark:text-white font-extrabold focus:ring-2 focus:ring-green/30 focus:border-green outline-none"
                               placeholder="Contoh: Ketua, Sekretaris"
                             />
                           </div>
@@ -1576,7 +1944,7 @@ export default function App() {
       {/* 3. ADDRESS MODAL WITH STATIC MAP PREVIEW & SAFE COPYING */}
       {activeModal === 'address' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-2xl rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
@@ -1763,7 +2131,7 @@ export default function App() {
       {/* 4. SHARE MENU MODAL */}
       {activeModal === 'share' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-md rounded-3xl bg-white/80 dark:bg-slate-900/85 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
@@ -1900,7 +2268,7 @@ export default function App() {
       {/* 5. DEFAULT DYNAMIC LINK DETAIL MODAL */}
       {selectedLinkForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-md rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             
             {/* CLOSE BUTTON */}
             <button 
@@ -2068,7 +2436,7 @@ export default function App() {
       {/* LOGIN MODAL */}
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-sm rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             {/* CLOSE BUTTON */}
             <button 
               onClick={() => { playSoftClick(); setShowLoginModal(false); setLoginError(''); }}
@@ -2141,7 +2509,7 @@ export default function App() {
       {/* LINK EDITOR MODAL */}
       {showLinkEditorModal && editingLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-8 py-4 bg-slate-950/40 dark:bg-slate-950/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-float-slow text-slate-700 dark:text-slate-200">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800/30 shadow-2xl p-6 md:p-8 animate-modal-enter text-slate-700 dark:text-slate-200">
             {/* CLOSE BUTTON */}
             <button 
               onClick={() => { playSoftClick(); setShowLinkEditorModal(false); setEditingLink(null); }}
