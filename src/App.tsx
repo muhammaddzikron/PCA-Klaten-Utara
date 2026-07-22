@@ -1026,39 +1026,223 @@ export default function App() {
     return processedAny || (typeof data === 'object' && Object.keys(data).length > 0);
   };
 
+function extractSpreadsheetId(url: string): string {
+  if (!url) return "1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA";
+  const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/i);
+  return match ? match[1] : "1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA";
+}
+
+function parseJsonOrStringList(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return trimmed.split(/\n|;/).map(s => s.trim()).filter(s => s.length > 0);
+  }
+  return [];
+}
+
+async function fetchSheetGviz(spreadsheetId: string, sheetName: string): Promise<any[]> {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) return [];
+    const json = JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+    
+    if (!json.table || !json.table.rows) return [];
+    
+    const cols = json.table.cols || [];
+    let headers: string[] = cols.map((c: any) => c && c.label ? c.label.trim() : '');
+    let startIndex = 0;
+    
+    const hasHeaderInCols = headers.some(h => h.length > 0);
+    if (!hasHeaderInCols && json.table.rows.length > 0) {
+      const firstRow = json.table.rows[0];
+      if (firstRow && firstRow.c) {
+        headers = firstRow.c.map((cell: any) => cell && cell.v !== null && cell.v !== undefined ? String(cell.v).trim() : '');
+        startIndex = 1;
+      }
+    }
+    
+    const result: any[] = [];
+    for (let i = startIndex; i < json.table.rows.length; i++) {
+      const row = json.table.rows[i];
+      if (!row || !row.c) continue;
+      const obj: Record<string, any> = {};
+      let hasValue = false;
+      row.c.forEach((cell: any, colIdx: number) => {
+        const val = cell && cell.v !== null && cell.v !== undefined ? cell.v : '';
+        const header = headers[colIdx] || `col_${colIdx}`;
+        if (header) {
+          obj[header] = val;
+          if (val !== '') hasValue = true;
+        }
+      });
+      if (hasValue) result.push(obj);
+    }
+    return result;
+  } catch (e) {
+    return [];
+  }
+}
+
+async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> {
+  const fetchCandidates = async (sheetNames: string[]) => {
+    for (const name of sheetNames) {
+      const rows = await fetchSheetGviz(spreadsheetId, name);
+      if (rows && rows.length > 0) return rows;
+    }
+    return [];
+  };
+
+  const [profileRows, boardRows, officeRows, subRows, configRows, linksRows] = await Promise.all([
+    fetchCandidates(["Profile", "Profil"]),
+    fetchCandidates(["Board", "Pengurus", "Data Pengurus", "Struktur"]),
+    fetchCandidates(["Office", "Kantor", "Alamat"]),
+    fetchCandidates(["SubBranches", "Ranting", "PRA", "Pimpinan Ranting"]),
+    fetchCandidates(["BoardConfig", "Config"]),
+    fetchCandidates(["Links", "Link", "Tautan", "Sheet1"])
+  ]);
+
+  const resultData: any = {};
+
+  if (profileRows.length > 0) {
+    const p = profileRows[0];
+    const history = p.history || p.History || p.sejarah || p.Sejarah || "";
+    const vision = p.vision || p.Vision || p.visi || p.Visi || "";
+    const rawMission = p.mission || p.Mission || p.misi || p.Misi || "";
+    const rawAch = p.achievements || p.Achievements || p.prestasi || p.Prestasi || p['amal usaha'] || "";
+    
+    resultData.profile = {
+      history,
+      vision,
+      mission: parseJsonOrStringList(rawMission),
+      achievements: parseJsonOrStringList(rawAch)
+    };
+  }
+
+  if (officeRows.length > 0) {
+    const o = officeRows[0];
+    resultData.office = {
+      name: o.name || o.Name || o.nama || o.Nama || "",
+      address: o.address || o.Address || o.alamat || o.Alamat || "",
+      googleMapsUrl: o.googleMapsUrl || o.google_maps_url || o['Google Maps'] || o.maps || "",
+      wazeUrl: o.wazeUrl || o.waze_url || o['Waze'] || "",
+      phone: String(o.phone || o.Phone || o.telepon || o.Telepon || o.wa || o['No HP'] || ""),
+      email: o.email || o.Email || o.surel || ""
+    };
+  }
+
+  if (subRows.length > 0) {
+    resultData.sub_branches = subRows.map((s: any) => ({
+      name: s.name || s.Name || s.nama || s.Nama || s.PRA || s.Ranting || "",
+      location: s.location || s.Location || s.lokasi || s.Lokasi || s.wilayah || s.Wilayah || ""
+    })).filter((s: any) => s.name || s.location);
+  }
+
+  if (configRows.length > 0) {
+    const c = configRows[0];
+    resultData.boardConfig = {
+      boardIntro: c.boardIntro || c.board_intro || c['Board Intro'] || "",
+      boardQuote: c.boardQuote || c.board_quote || c['Board Quote'] || "",
+      profileMenuTitle: c.profileMenuTitle || c.profile_menu_title || "",
+      profileMenuSubtitle: c.profileMenuSubtitle || c.profile_menu_subtitle || "",
+      boardMenuTitle: c.boardMenuTitle || c.board_menu_title || "",
+      boardMenuSubtitle: c.boardMenuSubtitle || c.board_menu_subtitle || "",
+      addressMenuTitle: c.addressMenuTitle || c.address_menu_title || "",
+      addressMenuSubtitle: c.addressMenuSubtitle || c.address_menu_subtitle || ""
+    };
+  }
+
+  if (boardRows.length > 0) {
+    resultData.board = boardRows.map((b: any) => ({
+      name: b.name || b.Name || b.nama || b.Nama || b['Nama Pengurus'] || "",
+      role: b.role || b.Role || b.jabatan || b.Jabatan || b['Jabatan Pengurus'] || "",
+      period: b.period || b.Period || b.periode || b.Periode || "2022 - 2027",
+      dept: b.dept || b.Dept || b.majelis || b.Majelis || b.departemen || "",
+      photo: b.photo || b.Photo || b.foto || b.Foto || "",
+      bio: b.bio || b.Bio || b.keterangan || b.Keterangan || ""
+    })).filter((b: any) => b.name || b.role);
+  }
+
+  if (linksRows.length > 0) {
+    resultData.links = linksRows.map((l: any) => ({
+      id: l.id || l.ID || l.id_link || `link_${Math.random().toString(36).substring(2, 7)}`,
+      title: l.title || l.Title || l.judul || l.Judul || "",
+      subtitle: l.subtitle || l.Subtitle || l.deskripsi || l.Deskripsi || "",
+      url: l.url || l.URL || l.link || l.Link || l.tautan || "",
+      icon: l.icon || l.Icon || l.ikon || "Globe",
+      badge: l.badge || l.Badge || l.kategori || "",
+      category: l.category || l.Category || l.kategori || "umum",
+      clicks: Number(l.clicks || l.Clicks || l.klik || 0),
+      popular: l.popular === true || l.popular === "TRUE" || l.popular === "true",
+      new: l.new === true || l.new === "TRUE" || l.new === "true"
+    })).filter((l: any) => l.title || l.url);
+  }
+
+  return resultData;
+}
+
   // Reusable function to fetch live spreadsheet data across all devices
   const fetchLinksFromSheet = async (showAlertOnSuccess = false) => {
-    if (!appsScriptUrl) return;
     setIsSyncing(true);
     setSyncStatus('idle');
-    try {
-      const fetchUrl = appsScriptUrl.includes('?') 
-        ? `${appsScriptUrl}&t=${Date.now()}`
-        : `${appsScriptUrl}?t=${Date.now()}`;
+    let synced = false;
 
-      const res = await fetch(fetchUrl, { cache: 'no-store' });
-      if (!res.ok) throw new Error("Gagal mengambil respon dari Google Sheet");
-      const data = await res.json();
-      const success = processSyncedData(data);
-      if (success) {
-        setSyncStatus('success');
-        setSyncMessage('Berhasil mensinkronkan seluruh data dari Google Sheets secara langsung!');
-        if (showAlertOnSuccess) {
-          alert("Sinkronisasi Berhasil! Seluruh data (Tautan, Profil, Pengurus, Alamat, Ranting) dari Google Sheet telah dimuat.");
-        }
-      } else {
-        throw new Error("Respon tidak berisi data yang dikenali");
+    const spId = extractSpreadsheetId(spreadsheetUrl);
+
+    // 1. Direct fetch from Google Sheets gviz API (works on every device without CORS issues)
+    if (spId) {
+      try {
+        const directData = await fetchDirectFromGoogleSheets(spId);
+        synced = processSyncedData(directData);
+      } catch (err) {
+        console.warn("Direct Google Sheet gviz fetch failed:", err);
       }
-    } catch (err) {
-      console.warn("Gagal sinkronisasi data Google Sheet:", err);
+    }
+
+    // 2. Also try Apps Script URL if available for extended data/logs
+    if (appsScriptUrl) {
+      try {
+        const fetchUrl = appsScriptUrl.includes('?') 
+          ? `${appsScriptUrl}&t=${Date.now()}`
+          : `${appsScriptUrl}?t=${Date.now()}`;
+
+        const res = await fetch(fetchUrl, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const scriptSynced = processSyncedData(data);
+          if (scriptSynced) synced = true;
+        }
+      } catch (err) {
+        console.warn("Apps Script sync failed:", err);
+      }
+    }
+
+    if (synced) {
+      setSyncStatus('success');
+      setSyncMessage('Berhasil mensinkronkan seluruh data langsung dari Google Sheets!');
+      if (showAlertOnSuccess) {
+        alert("Sinkronisasi Berhasil! Seluruh data (Tautan, Profil, Pengurus, Alamat, Ranting) dari Google Sheet telah dimuat.");
+      }
+    } else {
       setSyncStatus('error');
       setSyncMessage('Gagal mengambil data dari spreadsheet. Menggunakan data cadangan.');
       if (showAlertOnSuccess) {
-        alert("Sinkronisasi Gagal! Silakan periksa URL Web App atau koneksi internet Anda.");
+        alert("Sinkronisasi Gagal! Silakan periksa URL Spreadsheet atau koneksi internet Anda.");
       }
-    } finally {
-      setIsSyncing(false);
     }
+    setIsSyncing(false);
   };
 
   // Auto-fetch data on initial mount or when appsScriptUrl changes
