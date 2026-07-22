@@ -26,11 +26,11 @@ export interface SubBranch {
 }
 
 export const officeDetails = {
-  name: "Gedung Dakwah Muhammadiyah Cabang Klaten Utara",
-  address: "Jl. Ki Ageng Gribig Barenglor - Klaten Utara No.10, Tegal, Gergunung, Kec. Klaten Utara, Kabupaten Klaten, Jawa Tengah 57434",
-  googleMapsUrl: "https://maps.app.goo.gl/wpmR4Cu1Sfbk59W96",
-  wazeUrl: "https://waze.com/ul?ll=-7.687427,110.612803&navigate=yes",
-  phone: "+6281234567890",
+  name: "Gedung Dakwah Muhammadiyah Klaten Utara",
+  address: "Jl. Ki Hajar Dewantara No.24, Gergunung, Kec. Klaten Utara, Kabupaten Klaten, Jawa Tengah 57438",
+  googleMapsUrl: "https://maps.google.com/?q=Gedung+Dakwah+Muhammadiyah+Klaten+Utara",
+  wazeUrl: "https://waze.com/ul?q=Gedung+Dakwah+Muhammadiyah+Klaten+Utara",
+  phone: "6285742345590",
   email: "pca.klatenutara@gmail.com",
 };
 
@@ -53,13 +53,14 @@ export const profileDetails = {
 };
 
 export const subBranches: SubBranch[] = [
-  { name: "PRA Belang Wetan", location: "Ranting Belang Wetan" },
-  { name: "PRA Gergunung", location: "Ranting Gergunung" },
-  { name: "PRA Jitung", location: "Ranting Jitung" },
-  { name: "PRA Karanganom", location: "Ranting Karanganom" },
+  { name: "PRA Gading", location: "Ranting Gading" },
   { name: "PRA Ketandan", location: "Ranting Ketandan" },
-  { name: "PRA Mayungan", location: "Ranting Mayungan" },
-  { name: "PRA Sekarsuli", location: "Ranting Sekarsuli" }
+  { name: "PRA Karanganom", location: "Ranting Karanganom" },
+  { name: "PRA Bareng Lor", location: "Ranting Bareng Lor" },
+  { name: "PRA Sekarsuli", location: "Ranting Sekarsuli" },
+  { name: "PRA Jebugan", location: "Ranting Jebugan" },
+  { name: "PRA Gergunung", location: "Ranting Gergunung" },
+  { name: "PRA Jonggrangan", location: "Ranting Jonggrangan" }
 ];
 
 export const boardMembers: BoardMember[] = [

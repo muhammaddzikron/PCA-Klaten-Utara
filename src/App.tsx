@@ -423,6 +423,18 @@ function getSheetRowsAsJson(sheet) {
         key = "mission";
       } else if (lowerHeader === "prestasi" || lowerHeader === "amal usaha" || lowerHeader === "achievements") {
         key = "achievements";
+      } else if (lowerHeader === "lokasi" || lowerHeader === "ranting" || lowerHeader === "wilayah" || lowerHeader === "location") {
+        key = "location";
+      } else if (lowerHeader === "alamat" || lowerHeader === "lokasi gedung" || lowerHeader === "address") {
+        key = "address";
+      } else if (lowerHeader.indexOf("maps") !== -1 || lowerHeader === "googlemapsurl") {
+        key = "googleMapsUrl";
+      } else if (lowerHeader.indexOf("waze") !== -1 || lowerHeader === "wazeurl") {
+        key = "wazeUrl";
+      } else if (lowerHeader === "telepon" || lowerHeader === "phone" || lowerHeader === "no hp" || lowerHeader === "wa") {
+        key = "phone";
+      } else if (lowerHeader === "email" || lowerHeader === "e-mail" || lowerHeader === "surel") {
+        key = "email";
       }
 
       var val = row[j];
@@ -560,14 +572,14 @@ function createSubBranchesSheet(ss) {
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#F2F2F2");
   
   var defaultSub = [
-    ["PRA Belang Wetan", "Kelurahan Belang Wetan, Klaten Utara"],
-    ["PRA Gergunung", "Kelurahan Gergunung, Klaten Utara"],
-    ["PRA Bareng Lor", "Kelurahan Bareng Lor, Klaten Utara"],
-    ["PRA Karanganom", "Kelurahan Karanganom, Klaten Utara"],
-    ["PRA Jawi", "Kelurahan Jawi, Klaten Utara"],
-    ["PRA Ketandan", "Kelurahan Ketandan, Klaten Utara"],
-    ["PRA Mayungan", "Kelurahan Mayungan, Klaten Utara"],
-    ["PRA Sekarsuli", "Kelurahan Sekarsuli, Klaten Utara"]
+    ["PRA Gading", "Ranting Gading"],
+    ["PRA Ketandan", "Ranting Ketandan"],
+    ["PRA Karanganom", "Ranting Karanganom"],
+    ["PRA Bareng Lor", "Ranting Bareng Lor"],
+    ["PRA Sekarsuli", "Ranting Sekarsuli"],
+    ["PRA Jebugan", "Ranting Jebugan"],
+    ["PRA Gergunung", "Ranting Gergunung"],
+    ["PRA Jonggrangan", "Ranting Jonggrangan"]
   ];
   
   for (var i = 0; i < defaultSub.length; i++) {
