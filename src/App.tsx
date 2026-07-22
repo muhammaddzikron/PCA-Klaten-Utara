@@ -485,17 +485,20 @@ function createProfileSheet(ss) {
   sheet.appendRow(headers);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#D9EAF7");
   
-  var defaultHistory = "Pimpinan Cabang 'Aisyiyah (PCA) Klaten Utara berdiri sebagai garda terdepan dakwah Islam berkemajuan bagi perempuan di wilayah Klaten Utara, membina berbagai ranting, menggerakkan pengajian, pemberdayaan ekonomi perempuan, pembinaan kesehatan ibu-anak, serta mengelola berbagai Amal Usaha 'Aisyiyah.";
-  var defaultVision = "Menjadi organisasi perempuan Islam berkemajuan yang unggul dalam pemberdayaan perempuan, pendidikan keluarga, dan dakwah syiar untuk kemaslahatan umat.";
+  var defaultHistory = "Pimpinan Cabang 'Aisyiyah (PCA) Klaten Utara merupakan pilar gerakan dakwah perempuan Islam berkemajuan di bawah naungan Pimpinan Daerah 'Aisyiyah Kabupaten Klaten. Berdiri sejak puluhan tahun lalu, PCA Klaten Utara aktif dalam menyelenggarakan berbagai amal usaha di bidang keagamaan, pendidikan anak usia dini (TK ABA), pelayanan kesehatan sosial, pemberdayaan ekonomi perempuan, dan pembinaan moral umat.";
+  var defaultVision = "Mewujudkan kehidupan perempuan Islam berkemajuan yang cerdas, mandiri, sehat, dan berakhlak mulia di wilayah Klaten Utara serta berkontribusi nyata bagi umat dan bangsa.";
   var defaultMission = JSON.stringify([
-    "Menanamkan keyakinan dan memperteguh syiar Islam berkemajuan di lingkungan keluarga.",
-    "Meningkatkan kualitas hidup perempuan melalui pendidikan, dakwah keagamaan, kesehatan, dan ekonomi produktif.",
-    "Menggerakkan kepemimpinan perempuan secara aktif dalam kemasyarakatan."
+    "Menyelenggarakan dakwah Islamiyah yang mencerahkan secara inklusif and berkelanjutan.",
+    "Meningkatkan mutu pendidikan dasar dan menengah, khususnya pengelolaan TK ABA.",
+    "Memberdayakan ekonomi keluarga melalui program UMKM Bina Usaha 'Aisyiyah.",
+    "Menyediakan bimbingan sosial, konseling keluarga sakinah, dan posyandu lansia secara berkala.",
+    "Membina kader-kader perempuan tangguh dan berkemajuan sebagai penggerak persyarikatan."
   ]);
   var defaultAchievements = JSON.stringify([
-    "Pelopor pengajian rutin bulanan keliling terpadu di tingkat cabang & ranting.",
-    "Pemberdayaan UMKM binaan melalui koperasi syariah 'Aisyiyah Klaten Utara.",
-    "Bakti sosial rutin pembagian sembako dhuafa di setiap bulan Ramadhan."
+    "Akreditasi A untuk seluruh lembaga PAUD dan TK 'Aisyiyah Bustanul Athfal di Klaten Utara.",
+    "Pelopor gerakan 'Sadaqah Sampah' untuk kemandirian finansial dakwah sosial.",
+    "Penyelenggaraan kajian rutin mingguan dan pengajian akbar berkala se-Klaten Utara.",
+    "Pembinaan aktif Kelompok Usaha Bersama (KUB) kerajinan dan kuliner khas Klaten."
   ]);
   
   sheet.appendRow([defaultHistory, defaultVision, defaultMission, defaultAchievements]);
@@ -510,7 +513,6 @@ function createBoardSheet(ss) {
   
   var defaultBoard = [
     ["Hj. Siti Aminah, S.Ag.", "Ketua PCA Klaten Utara", "2022 - 2027", "Pimpinan Harian", "", "Bertanggung jawab atas koordinasi umum, arah kebijakan syiar, dan relasi eksternal cabang."],
-    ["Hj. Humairoh", "Wakil Ketua / Pengurus Harian", "2022 - 2027", "Pimpinan Harian", "", "Mengoordinasikan bidang syiar dan pembinaan pengajian ranting."],
     ["Dra. Hidayah Fitriani", "Sekretaris I", "2022 - 2027", "Sekretariat", "", "Mengelola tata persuratan, pengarsipan kegiatan syiar, dokumentasi rapat, dan pusat data organisasi."],
     ["Ibu Sri Mulyani, S.Pd.", "Sekretaris II", "2022 - 2027", "Sekretariat", "", "Membantu tugas sekretaris utama."],
     ["Hj. Nurul Latifah", "Bendahara I", "2022 - 2027", "Keuangan", "", "Mengatur sirkulasi dana infaq, pengelolaan anggaran amal usaha, pengajian, dan laporan keuangan berkala."],
@@ -522,7 +524,8 @@ function createBoardSheet(ss) {
     ["Ibu Siti Maryam", "Ketua Majelis Kesejahteraan Sosial", "2022 - 2027", "Majelis Kesejahteraan Sosial", "", "Menyelenggarakan santunan dhuafa, baksos, dan pelayanan sosial."],
     ["Ibu Tri Astuti, S.E.", "Ketua Majelis Pembinaan Kader", "2022 - 2027", "Majelis Pembinaan Kader", "", "Melakukan pembinaan kaderisasi organisasi perempuan berkemajuan."],
     ["Adv. Fitriani, S.H., M.H.", "Ketua Majelis Hukum & HAM", "2022 - 2027", "Majelis Hukum & HAM", "", "Mengelola edukasi hukum dan advokasi perempuan-anak."],
-    ["Ibu Khairunnisa, S.I.Kom.", "Ketua Majelis Tabligh & Medkom", "2022 - 2027", "Majelis Tabligh & Medkom", "", "Mengelola publikasi media syiar digital, dokumentasi video, dan humas."]
+    ["Ibu Khairunnisa, S.I.Kom.", "Ketua Majelis Tabligh & Medkom", "2022 - 2027", "Majelis Tabligh & Medkom", "", "Mengelola publikasi media syiar digital, dokumentasi video, dan humas."],
+    ["Ibu Hj. Humairah Al Hakim, SE, M.BA", "Ketua Majelis Paud Dasmen", "2022 - 2027", "Majelis Paud Dasmen", "", "Mengoordinasikan pembinaan dan pengembangan PAUD serta pendidikan dasar-menengah."]
   ];
   
   if (defaultBoard.length > 0) {

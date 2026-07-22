@@ -68,10 +68,6 @@ export const boardMembers: BoardMember[] = [
     role: "Ketua PCA Klaten Utara"
   },
   {
-    name: "Hj. Humairoh",
-    role: "Wakil Ketua / Pengurus Harian"
-  },
-  {
     name: "Dra. Hidayah Fitriani",
     role: "Sekretaris I"
   },
@@ -118,6 +114,10 @@ export const boardMembers: BoardMember[] = [
   {
     name: "Ibu Khairunnisa, S.I.Kom.",
     role: "Ketua Majelis Tabligh & Medkom"
+  },
+  {
+    name: "Ibu Hj. Humairah Al Hakim, SE, M.BA",
+    role: "Ketua Majelis Paud Dasmen"
   }
 ];
 
