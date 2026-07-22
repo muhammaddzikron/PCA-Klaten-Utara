@@ -58,19 +58,47 @@ function playModalOpenSound() {
   }
 }
 
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxUDEkxEBtk2XUxq6qsJfDEy-NWYZwKvkDOB6HqRQVscdPMEW-n7mKrgub7HIQMGaM9/exec';
+
 const appsScriptCode = `// GOOGLE APPS SCRIPT: SINKRONISASI INTEGRAL PCA KLATEN UTARA (UPGRADED MULTI-SHEET)
-// Copy seluruh kode ini dan paste di Extensions > Apps Script (Ekstensi > Apps Script) pada Google Sheet Anda.
+// SPREADSHEET TARGET: https://docs.google.com/spreadsheets/d/1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA/edit
+// Copy seluruh kode ini dan paste di Ekstensi > Apps Script (Extensions > Apps Script) pada Google Sheet Anda.
+
+var SPREADSHEET_ID = "1teXrh7WIg9hKmnP-XwcPxSSk6YOuTbbdE8siqtd5zLA";
+
+function getSpreadsheet() {
+  try {
+    var active = SpreadsheetApp.getActiveSpreadsheet();
+    if (active) return active;
+  } catch(e) {}
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+function findSheet(ss, names) {
+  for (var i = 0; i < names.length; i++) {
+    var sh = ss.getSheetByName(names[i]);
+    if (sh) return sh;
+  }
+  var sheets = ss.getSheets();
+  for (var k = 0; k < sheets.length; k++) {
+    var sName = sheets[k].getName().toLowerCase().trim();
+    for (var j = 0; j < names.length; j++) {
+      if (sName === names[j].toLowerCase().trim()) return sheets[k];
+    }
+  }
+  return null;
+}
 
 function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet();
   
-  // Memastikan semua sheet tersedia. Jika tidak ada, buat baru dengan data default yang rapi.
-  var linksSheet = ss.getSheetByName("Links") || createLinksSheet(ss);
-  var profileSheet = ss.getSheetByName("Profile") || createProfileSheet(ss);
-  var boardSheet = ss.getSheetByName("Board") || createBoardSheet(ss);
-  var officeSheet = ss.getSheetByName("Office") || createOfficeSheet(ss);
-  var subBranchesSheet = ss.getSheetByName("SubBranches") || createSubBranchesSheet(ss);
-  var boardConfigSheet = ss.getSheetByName("BoardConfig") || createBoardConfigSheet(ss);
+  // Memastikan semua sheet tersedia dengan pencarian toleran nama
+  var linksSheet = findSheet(ss, ["Links", "Link", "Tautan", "Sheet1"]) || createLinksSheet(ss);
+  var profileSheet = findSheet(ss, ["Profile", "Profil"]) || createProfileSheet(ss);
+  var boardSheet = findSheet(ss, ["Board", "Pengurus", "Data Pengurus", "Struktur"]) || createBoardSheet(ss);
+  var officeSheet = findSheet(ss, ["Office", "Kantor", "Alamat"]) || createOfficeSheet(ss);
+  var subBranchesSheet = findSheet(ss, ["SubBranches", "Ranting", "PRA", "Pimpinan Ranting"]) || createSubBranchesSheet(ss);
+  var boardConfigSheet = findSheet(ss, ["BoardConfig", "Config"]) || createBoardConfigSheet(ss);
   
   // Ambil semua data sebagai array JSON
   var linksData = getSheetRowsAsJson(linksSheet);
@@ -132,9 +160,9 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Links") || createLinksSheet(ss);
-  var logSheet = ss.getSheetByName("Logs") || createLogsSheet(ss);
+  var ss = getSpreadsheet();
+  var sheet = findSheet(ss, ["Links", "Link", "Tautan", "Sheet1"]) || createLinksSheet(ss);
+  var logSheet = findSheet(ss, ["Logs", "Log"]) || createLogsSheet(ss);
   
   var postData;
   try {
@@ -232,7 +260,7 @@ function doPost(e) {
 
   // 5. UPDATE PROFILE DATA
   if (action === "save_profile" && postData.profile) {
-    var profileSheet = ss.getSheetByName("Profile") || createProfileSheet(ss);
+    var profileSheet = findSheet(ss, ["Profile", "Profil"]) || createProfileSheet(ss);
     profileSheet.clear();
     profileSheet.appendRow(["history", "vision", "mission", "achievements"]);
     var prof = postData.profile;
@@ -254,15 +282,17 @@ function doPost(e) {
 
   // 6. UPDATE BOARD MEMBERS DATA
   if (action === "save_board" && postData.board) {
-    var boardSheet = ss.getSheetByName("Board") || createBoardSheet(ss);
+    var boardSheet = findSheet(ss, ["Board", "Pengurus", "Data Pengurus", "Struktur"]) || createBoardSheet(ss);
     boardSheet.clear();
     boardSheet.appendRow(["name", "role", "period", "dept", "photo", "bio"]);
     var boardArr = postData.board;
-    if (Array.isArray(boardArr)) {
+    if (Array.isArray(boardArr) && boardArr.length > 0) {
+      var rowsToAppend = [];
       for (var i = 0; i < boardArr.length; i++) {
         var b = boardArr[i];
-        boardSheet.appendRow([b.name || "", b.role || "", b.period || "", b.dept || "", b.photo || "", b.bio || ""]);
+        rowsToAppend.push([b.name || "", b.role || "", b.period || "", b.dept || "", b.photo || "", b.bio || ""]);
       }
+      boardSheet.getRange(2, 1, rowsToAppend.length, 6).setValues(rowsToAppend);
     }
     
     var configUpdate = {};
@@ -281,7 +311,7 @@ function doPost(e) {
 
   // 7. UPDATE OFFICE DETAILS DATA
   if (action === "save_office" && postData.office) {
-    var officeSheet = ss.getSheetByName("Office") || createOfficeSheet(ss);
+    var officeSheet = findSheet(ss, ["Office", "Kantor", "Alamat"]) || createOfficeSheet(ss);
     officeSheet.clear();
     officeSheet.appendRow(["name", "address", "googleMapsUrl", "wazeUrl", "phone", "email"]);
     var o = postData.office;
@@ -301,15 +331,17 @@ function doPost(e) {
 
   // 8. UPDATE SUB BRANCHES DATA
   if (action === "save_sub_branches" && postData.sub_branches) {
-    var subSheet = ss.getSheetByName("SubBranches") || createSubBranchesSheet(ss);
+    var subSheet = findSheet(ss, ["SubBranches", "Ranting", "PRA", "Pimpinan Ranting"]) || createSubBranchesSheet(ss);
     subSheet.clear();
     subSheet.appendRow(["name", "location"]);
     var subArr = postData.sub_branches;
-    if (Array.isArray(subArr)) {
+    if (Array.isArray(subArr) && subArr.length > 0) {
+      var rowsToAppend = [];
       for (var i = 0; i < subArr.length; i++) {
         var s = subArr[i];
-        subSheet.appendRow([s.name || "", s.location || ""]);
+        rowsToAppend.push([s.name || "", s.location || ""]);
       }
+      subSheet.getRange(2, 1, rowsToAppend.length, 2).setValues(rowsToAppend);
     }
     
     if (logSheet) {
@@ -355,19 +387,60 @@ function getSheetRowsAsJson(sheet) {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     var record = {};
+    var hasVal = false;
     for (var j = 0; j < headers.length; j++) {
-      var key = headers[j].toString().trim();
+      var rawHeader = headers[j] ? headers[j].toString().trim() : "";
+      var key = rawHeader;
+      var lowerHeader = rawHeader.toLowerCase();
+      
+      if (lowerHeader === "nama" || lowerHeader === "nama pengurus" || lowerHeader === "nama lengkap" || lowerHeader === "name") {
+        key = "name";
+      } else if (lowerHeader === "jabatan" || lowerHeader === "jabatan pengurus" || lowerHeader === "role" || lowerHeader === "posisi") {
+        key = "role";
+      } else if (lowerHeader === "periode" || lowerHeader === "period" || lowerHeader === "masa jabatan") {
+        key = "period";
+      } else if (lowerHeader === "majelis" || lowerHeader === "departemen" || lowerHeader === "dept") {
+        key = "dept";
+      } else if (lowerHeader === "foto" || lowerHeader === "photo") {
+        key = "photo";
+      } else if (lowerHeader === "bio" || lowerHeader === "keterangan") {
+        key = "bio";
+      } else if (lowerHeader === "judul" || lowerHeader === "nama tautan" || lowerHeader === "title") {
+        key = "title";
+      } else if (lowerHeader === "subjudul" || lowerHeader === "subtitle") {
+        key = "subtitle";
+      } else if (lowerHeader === "link" || lowerHeader === "tautan" || lowerHeader === "url") {
+        key = "url";
+      } else if (lowerHeader === "kategori" || lowerHeader === "category") {
+        key = "category";
+      } else if (lowerHeader === "klik" || lowerHeader === "clicks") {
+        key = "clicks";
+      } else if (lowerHeader === "sejarah" || lowerHeader === "history") {
+        key = "history";
+      } else if (lowerHeader === "visi" || lowerHeader === "vision") {
+        key = "vision";
+      } else if (lowerHeader === "misi" || lowerHeader === "mission") {
+        key = "mission";
+      } else if (lowerHeader === "prestasi" || lowerHeader === "amal usaha" || lowerHeader === "achievements") {
+        key = "achievements";
+      }
+
       var val = row[j];
+      if (val !== "" && val !== null && val !== undefined) {
+        hasVal = true;
+      }
       
       if (key === "isModal") {
-        record[key] = (val === "TRUE" || val === true || val === 1 || val.toString().toLowerCase() === "true");
+        record[key] = (val === "TRUE" || val === true || val === 1 || (val && val.toString().toLowerCase() === "true"));
       } else if (key === "clicks") {
         record[key] = parseInt(val || 0);
       } else {
         record[key] = val;
       }
     }
-    jsonArray.push(record);
+    if (hasVal) {
+      jsonArray.push(record);
+    }
   }
   return jsonArray;
 }
@@ -436,15 +509,24 @@ function createBoardSheet(ss) {
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#E2F0D9");
   
   var defaultBoard = [
-    ["Hj. Sri Setyaningsih, S.Pd.", "Ketua Umum", "2022 - 2027", "Pimpinan Harian", "", "Bertanggung jawab atas koordinasi umum, arah kebijakan syiar, dan relasi eksternal cabang."],
-    ["Hj. Siti Aminah, S.Ag.", "Wakil Ketua I", "2022 - 2027", "Pimpinan Harian", "", "Membidangi pembinaan program Majelis Tabligh, Pembinaan Ranting, dan Amal Usaha Pendidikan."],
-    ["Dra. Hj. Wahyuni", "Wakil Ketua II", "2022 - 2027", "Pimpinan Harian", "", "Fokus pada penguatan pemberdayaan ekonomi keluarga sakinah, Majelis Kesehatan, dan Kesejahteraan Sosial."],
-    ["Sri Lestari, S.Pd.I.", "Sekretaris", "2022 - 2027", "Sekretariat", "", "Mengelola tata persuratan, pengarsipan kegiatan syiar, dokumentasi rapat, dan pusat data organisasi."],
-    ["Hj. Sumarsih", "Bendahara", "2022 - 2027", "Keuangan", "", "Mengatur sirkulasi dana infaq, pengelolaan anggaran amal usaha, pengajian, dan laporan keuangan berkala."]
+    ["Hj. Siti Aminah, S.Ag.", "Ketua PCA Klaten Utara", "2022 - 2027", "Pimpinan Harian", "", "Bertanggung jawab atas koordinasi umum, arah kebijakan syiar, dan relasi eksternal cabang."],
+    ["Hj. Humairoh", "Wakil Ketua / Pengurus Harian", "2022 - 2027", "Pimpinan Harian", "", "Mengoordinasikan bidang syiar dan pembinaan pengajian ranting."],
+    ["Dra. Hidayah Fitriani", "Sekretaris I", "2022 - 2027", "Sekretariat", "", "Mengelola tata persuratan, pengarsipan kegiatan syiar, dokumentasi rapat, dan pusat data organisasi."],
+    ["Ibu Sri Mulyani, S.Pd.", "Sekretaris II", "2022 - 2027", "Sekretariat", "", "Membantu tugas sekretaris utama."],
+    ["Hj. Nurul Latifah", "Bendahara I", "2022 - 2027", "Keuangan", "", "Mengatur sirkulasi dana infaq, pengelolaan anggaran amal usaha, pengajian, dan laporan keuangan berkala."],
+    ["Ibu Rahmawati, S.E.", "Bendahara II", "2022 - 2027", "Keuangan", "", "Membantu pengelolaan laporan keuangan harian."],
+    ["Ustazah Salamah, M.Pd.I.", "Ketua Majelis Tabligh", "2022 - 2027", "Majelis Tabligh", "", "Mengoordinasikan kegiatan pengajian dan kajian keagamaan."],
+    ["Ibu Sri Rahayu, S.Pd.", "Ketua Majelis Dikdasmen", "2022 - 2027", "Majelis Dikdasmen", "", "Membina dan mengelola amal usaha sekolah/TK 'Aisyiyah."],
+    ["Dr. Hj. Retno Woelandari", "Ketua Majelis Kesehatan", "2022 - 2027", "Majelis Kesehatan", "", "Mengelola program kesehatan ibu, anak, dan lansia."],
+    ["Ibu Aminah Zuhri", "Ketua Majelis Ekonomi & Ketenagakerjaan", "2022 - 2027", "Majelis Ekonomi", "", "Mendorong kemandirian ekonomi perempuan dan UMKM binaan."],
+    ["Ibu Siti Maryam", "Ketua Majelis Kesejahteraan Sosial", "2022 - 2027", "Majelis Kesejahteraan Sosial", "", "Menyelenggarakan santunan dhuafa, baksos, dan pelayanan sosial."],
+    ["Ibu Tri Astuti, S.E.", "Ketua Majelis Pembinaan Kader", "2022 - 2027", "Majelis Pembinaan Kader", "", "Melakukan pembinaan kaderisasi organisasi perempuan berkemajuan."],
+    ["Adv. Fitriani, S.H., M.H.", "Ketua Majelis Hukum & HAM", "2022 - 2027", "Majelis Hukum & HAM", "", "Mengelola edukasi hukum dan advokasi perempuan-anak."],
+    ["Ibu Khairunnisa, S.I.Kom.", "Ketua Majelis Tabligh & Medkom", "2022 - 2027", "Majelis Tabligh & Medkom", "", "Mengelola publikasi media syiar digital, dokumentasi video, dan humas."]
   ];
   
-  for (var i = 0; i < defaultBoard.length; i++) {
-    sheet.appendRow(defaultBoard[i]);
+  if (defaultBoard.length > 0) {
+    sheet.getRange(2, 1, defaultBoard.length, 6).setValues(defaultBoard);
   }
   return sheet;
 }
@@ -559,6 +641,30 @@ function HijabAvatar({ name }: { name: string }) {
   );
 }
 
+function normalizeBoardMember(item: any) {
+  if (!item || typeof item !== 'object') return null;
+  const name = item.name || item.Nama || item.nama || item['Nama Pengurus'] || item['Nama Lengkap'] || item.Name || item.NAME || '';
+  const role = item.role || item.Jabatan || item.jabatan || item.Role || item.JABATAN || item['Jabatan Pengurus'] || item.Posisi || item.posisi || '';
+  const period = item.period || item.Periode || item.periode || item.Period || item.PERIODE || '2022 - 2027';
+  const dept = item.dept || item.Majelis || item.majelis || item.Departemen || item.dept || item.Dept || '';
+  const photo = item.photo || item.Foto || item.foto || item.Photo || '';
+  const bio = item.bio || item.Bio || item.Keterangan || item.keterangan || '';
+
+  const trimmedName = String(name).trim();
+  const trimmedRole = String(role).trim();
+
+  if (!trimmedName && !trimmedRole) return null;
+
+  return {
+    name: trimmedName || 'Pengurus PCA',
+    role: trimmedRole || 'Pengurus',
+    period: String(period).trim(),
+    dept: String(dept).trim(),
+    photo: String(photo).trim(),
+    bio: String(bio).trim()
+  };
+}
+
 export default function App() {
   // Theme state initialization
   const [isDark, setIsDark] = useState(() => {
@@ -577,7 +683,7 @@ export default function App() {
 
   // Google Sheets Sync & Dynamic Modal States
   const [appsScriptUrl, setAppsScriptUrl] = useState(() => {
-    return typeof window !== 'undefined' ? (localStorage.getItem('pca_apps_script_url') || 'https://script.google.com/macros/s/AKfycbxUDEkxEBtk2XUxq6qsJfDEy-NWYZwKvkDOB6HqRQVscdPMEW-n7mKrgub7HIQMGaM9/exec') : 'https://script.google.com/macros/s/AKfycbxUDEkxEBtk2XUxq6qsJfDEy-NWYZwKvkDOB6HqRQVscdPMEW-n7mKrgub7HIQMGaM9/exec';
+    return typeof window !== 'undefined' ? (localStorage.getItem('pca_apps_script_url') || DEFAULT_APPS_SCRIPT_URL) : DEFAULT_APPS_SCRIPT_URL;
   });
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(() => {
     return typeof window !== 'undefined' 
@@ -794,133 +900,155 @@ export default function App() {
     localStorage.setItem('pca_link_clicks', JSON.stringify(linkClicks));
   }, [linkClicks]);
 
-  // Load dynamic links & database sheets from Google Sheet on mount or when appsScriptUrl changes
-  useEffect(() => {
-    if (!appsScriptUrl) {
-      setLinks(linksData);
-      setSyncStatus('idle');
-      return;
+  // Unified helper function to process JSON data returned by Google Apps Script
+  const processSyncedData = (data: any) => {
+    if (!data || typeof data !== 'object') return false;
+
+    let processedAny = false;
+
+    // 1. Links
+    if (Array.isArray(data.links) && data.links.length > 0) {
+      setLinks(data.links);
+      localStorage.setItem('pca_links_custom', JSON.stringify(data.links));
+      const sheetClicks: Record<string, number> = {};
+      data.links.forEach((link: any) => {
+        if (link.clicks !== undefined) {
+          sheetClicks[link.id] = Number(link.clicks);
+        }
+      });
+      if (Object.keys(sheetClicks).length > 0) {
+        setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+      }
+      processedAny = true;
     }
 
-    const processSyncedData = (data: any) => {
-      // If it's a combined object containing multiple sheets
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        let hasLinks = false;
-        if (Array.isArray(data.links) && data.links.length > 0) {
-          setLinks(data.links);
-          localStorage.setItem('pca_links_custom', JSON.stringify(data.links));
-          const sheetClicks: Record<string, number> = {};
-          data.links.forEach((link: any) => {
-            if (link.clicks !== undefined) {
-              sheetClicks[link.id] = Number(link.clicks);
-            }
-          });
-          if (Object.keys(sheetClicks).length > 0) {
-            setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
-          }
-          hasLinks = true;
-        }
-        
-        if (data.profile && typeof data.profile === 'object' && data.profile.history) {
-          setProfileDetailsState(data.profile);
-          localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
-        }
-        
-        if (Array.isArray(data.board) && data.board.length > 0) {
-          setBoardMembersState(data.board);
-          localStorage.setItem('pca_board_members', JSON.stringify(data.board));
-        }
+    // 2. Profile Details
+    if (data.profile && typeof data.profile === 'object' && (data.profile.history || data.profile.vision || data.profile.mission)) {
+      setProfileDetailsState(data.profile);
+      localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
+      processedAny = true;
+    }
 
-        if (data.boardConfig && typeof data.boardConfig === 'object') {
-          if (data.boardConfig.boardIntro) {
-            setBoardIntro(data.boardConfig.boardIntro);
-            localStorage.setItem('pca_board_intro', data.boardConfig.boardIntro);
-          }
-          if (data.boardConfig.boardQuote) {
-            setBoardQuote(data.boardConfig.boardQuote);
-            localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
-          }
-          if (data.boardConfig.profileMenuTitle) {
-            setProfileMenuTitle(data.boardConfig.profileMenuTitle);
-            localStorage.setItem('pca_profile_menu_title', data.boardConfig.profileMenuTitle);
-          }
-          if (data.boardConfig.profileMenuSubtitle) {
-            setProfileMenuSubtitle(data.boardConfig.profileMenuSubtitle);
-            localStorage.setItem('pca_profile_menu_subtitle', data.boardConfig.profileMenuSubtitle);
-          }
-          if (data.boardConfig.boardMenuTitle) {
-            setBoardMenuTitle(data.boardConfig.boardMenuTitle);
-            localStorage.setItem('pca_board_menu_title', data.boardConfig.boardMenuTitle);
-          }
-          if (data.boardConfig.boardMenuSubtitle) {
-            setBoardMenuSubtitle(data.boardConfig.boardMenuSubtitle);
-            localStorage.setItem('pca_board_menu_subtitle', data.boardConfig.boardMenuSubtitle);
-          }
-          if (data.boardConfig.addressMenuTitle) {
-            setAddressMenuTitle(data.boardConfig.addressMenuTitle);
-            localStorage.setItem('pca_address_menu_title', data.boardConfig.addressMenuTitle);
-          }
-          if (data.boardConfig.addressMenuSubtitle) {
-            setAddressMenuSubtitle(data.boardConfig.addressMenuSubtitle);
-            localStorage.setItem('pca_address_menu_subtitle', data.boardConfig.addressMenuSubtitle);
-          }
-        }
-        
-        if (data.office && typeof data.office === 'object' && data.office.name) {
-          setOfficeDetailsState(data.office);
-          localStorage.setItem('pca_office_details', JSON.stringify(data.office));
-        }
-        
-        if (Array.isArray(data.sub_branches) && data.sub_branches.length > 0) {
-          setSubBranchesState(data.sub_branches);
-          localStorage.setItem('pca_sub_branches', JSON.stringify(data.sub_branches));
-        }
-        return hasLinks;
+    // 3. Board Members (Pengurus)
+    if (Array.isArray(data.board) && data.board.length > 0) {
+      const normalizedBoard = data.board
+        .map((b: any) => normalizeBoardMember(b))
+        .filter((b: any) => b !== null);
+      if (normalizedBoard.length > 0) {
+        setBoardMembersState(normalizedBoard);
+        localStorage.setItem('pca_board_members', JSON.stringify(normalizedBoard));
+        processedAny = true;
       }
-      
-      // Backward compatibility flat array fallback
-      if (Array.isArray(data) && data.length > 0) {
-        const sheetClicks: Record<string, number> = {};
-        data.forEach(link => {
-          if (link.clicks !== undefined) {
-            sheetClicks[link.id] = Number(link.clicks);
-          }
-        });
-        if (Object.keys(sheetClicks).length > 0) {
-          setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
-        }
-        setLinks(data);
-        localStorage.setItem('pca_links_custom', JSON.stringify(data));
-        return true;
-      }
-      return false;
-    };
-    
-    const fetchLinks = async () => {
-      setIsSyncing(true);
-      setSyncStatus('idle');
-      try {
-        const res = await fetch(appsScriptUrl);
-        if (!res.ok) throw new Error("Gagal mengambil respon dari Google Sheet");
-        const data = await res.json();
-        const success = processSyncedData(data);
-        if (success) {
-          setSyncStatus('success');
-          setSyncMessage('Berhasil mensinkronkan seluruh data dari Google Sheets secara langsung!');
-        } else {
-          throw new Error("Format data tidak valid");
-        }
-      } catch (err) {
-        console.warn("Gagal sinkronisasi data Google Sheet, menggunakan cadangan lokal:", err);
-        setSyncStatus('error');
-        setSyncMessage('Gagal mengambil data dari spreadsheet. Menggunakan data cadangan lokal.');
-        setLinks(linksData);
-      } finally {
-        setIsSyncing(false);
-      }
-    };
+    }
 
-    fetchLinks();
+    // 4. Board Config (Header & Subtitles)
+    if (data.boardConfig && typeof data.boardConfig === 'object') {
+      if (data.boardConfig.boardIntro) {
+        setBoardIntro(data.boardConfig.boardIntro);
+        localStorage.setItem('pca_board_intro', data.boardConfig.boardIntro);
+      }
+      if (data.boardConfig.boardQuote) {
+        setBoardQuote(data.boardConfig.boardQuote);
+        localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
+      }
+      if (data.boardConfig.profileMenuTitle) {
+        setProfileMenuTitle(data.boardConfig.profileMenuTitle);
+        localStorage.setItem('pca_profile_menu_title', data.boardConfig.profileMenuTitle);
+      }
+      if (data.boardConfig.profileMenuSubtitle) {
+        setProfileMenuSubtitle(data.boardConfig.profileMenuSubtitle);
+        localStorage.setItem('pca_profile_menu_subtitle', data.boardConfig.profileMenuSubtitle);
+      }
+      if (data.boardConfig.boardMenuTitle) {
+        setBoardMenuTitle(data.boardConfig.boardMenuTitle);
+        localStorage.setItem('pca_board_menu_title', data.boardConfig.boardMenuTitle);
+      }
+      if (data.boardConfig.boardMenuSubtitle) {
+        setBoardMenuSubtitle(data.boardConfig.boardMenuSubtitle);
+        localStorage.setItem('pca_board_menu_subtitle', data.boardConfig.boardMenuSubtitle);
+      }
+      if (data.boardConfig.addressMenuTitle) {
+        setAddressMenuTitle(data.boardConfig.addressMenuTitle);
+        localStorage.setItem('pca_address_menu_title', data.boardConfig.addressMenuTitle);
+      }
+      if (data.boardConfig.addressMenuSubtitle) {
+        setAddressMenuSubtitle(data.boardConfig.addressMenuSubtitle);
+        localStorage.setItem('pca_address_menu_subtitle', data.boardConfig.addressMenuSubtitle);
+      }
+      processedAny = true;
+    }
+
+    // 5. Office Details
+    if (data.office && typeof data.office === 'object' && (data.office.name || data.office.address)) {
+      setOfficeDetailsState(data.office);
+      localStorage.setItem('pca_office_details', JSON.stringify(data.office));
+      processedAny = true;
+    }
+
+    // 6. Sub Branches (Ranting)
+    if (Array.isArray(data.sub_branches) && data.sub_branches.length > 0) {
+      setSubBranchesState(data.sub_branches);
+      localStorage.setItem('pca_sub_branches', JSON.stringify(data.sub_branches));
+      processedAny = true;
+    }
+
+    // 7. Backward compatibility flat array fallback
+    if (Array.isArray(data) && data.length > 0) {
+      const sheetClicks: Record<string, number> = {};
+      data.forEach((link: any) => {
+        if (link.clicks !== undefined) {
+          sheetClicks[link.id] = Number(link.clicks);
+        }
+      });
+      if (Object.keys(sheetClicks).length > 0) {
+        setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
+      }
+      setLinks(data);
+      localStorage.setItem('pca_links_custom', JSON.stringify(data));
+      processedAny = true;
+    }
+
+    return processedAny || (typeof data === 'object' && Object.keys(data).length > 0);
+  };
+
+  // Reusable function to fetch live spreadsheet data across all devices
+  const fetchLinksFromSheet = async (showAlertOnSuccess = false) => {
+    if (!appsScriptUrl) return;
+    setIsSyncing(true);
+    setSyncStatus('idle');
+    try {
+      const fetchUrl = appsScriptUrl.includes('?') 
+        ? `${appsScriptUrl}&t=${Date.now()}`
+        : `${appsScriptUrl}?t=${Date.now()}`;
+
+      const res = await fetch(fetchUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error("Gagal mengambil respon dari Google Sheet");
+      const data = await res.json();
+      const success = processSyncedData(data);
+      if (success) {
+        setSyncStatus('success');
+        setSyncMessage('Berhasil mensinkronkan seluruh data dari Google Sheets secara langsung!');
+        if (showAlertOnSuccess) {
+          alert("Sinkronisasi Berhasil! Seluruh data (Tautan, Profil, Pengurus, Alamat, Ranting) dari Google Sheet telah dimuat.");
+        }
+      } else {
+        throw new Error("Respon tidak berisi data yang dikenali");
+      }
+    } catch (err) {
+      console.warn("Gagal sinkronisasi data Google Sheet:", err);
+      setSyncStatus('error');
+      setSyncMessage('Gagal mengambil data dari spreadsheet. Menggunakan data cadangan.');
+      if (showAlertOnSuccess) {
+        alert("Sinkronisasi Gagal! Silakan periksa URL Web App atau koneksi internet Anda.");
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Auto-fetch data on initial mount or when appsScriptUrl changes
+  useEffect(() => {
+    fetchLinksFromSheet(false);
   }, [appsScriptUrl]);
 
   // Manual Refresh Handler
@@ -930,120 +1058,7 @@ export default function App() {
       alert("Masukkan URL Google Apps Script Web App terlebih dahulu di panel admin!");
       return;
     }
-    setIsSyncing(true);
-    try {
-      const res = await fetch(appsScriptUrl);
-      if (!res.ok) throw new Error("Gagal mengambil respon");
-      const data = await res.json();
-      
-      // Local helper inside manual refresh
-      const processSyncedData = (data: any) => {
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          let hasLinks = false;
-          if (Array.isArray(data.links) && data.links.length > 0) {
-            setLinks(data.links);
-            localStorage.setItem('pca_links_custom', JSON.stringify(data.links));
-            const sheetClicks: Record<string, number> = {};
-            data.links.forEach((link: any) => {
-              if (link.clicks !== undefined) {
-                sheetClicks[link.id] = Number(link.clicks);
-              }
-            });
-            if (Object.keys(sheetClicks).length > 0) {
-              setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
-            }
-            hasLinks = true;
-          }
-          
-          if (data.profile && typeof data.profile === 'object' && data.profile.history) {
-            setProfileDetailsState(data.profile);
-            localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
-          }
-          
-          if (Array.isArray(data.board) && data.board.length > 0) {
-            setBoardMembersState(data.board);
-            localStorage.setItem('pca_board_members', JSON.stringify(data.board));
-          }
-
-          if (data.boardConfig && typeof data.boardConfig === 'object') {
-            if (data.boardConfig.boardIntro) {
-              setBoardIntro(data.boardConfig.boardIntro);
-              localStorage.setItem('pca_board_intro', data.boardConfig.boardIntro);
-            }
-            if (data.boardConfig.boardQuote) {
-              setBoardQuote(data.boardConfig.boardQuote);
-              localStorage.setItem('pca_board_quote', data.boardConfig.boardQuote);
-            }
-            if (data.boardConfig.profileMenuTitle) {
-              setProfileMenuTitle(data.boardConfig.profileMenuTitle);
-              localStorage.setItem('pca_profile_menu_title', data.boardConfig.profileMenuTitle);
-            }
-            if (data.boardConfig.profileMenuSubtitle) {
-              setProfileMenuSubtitle(data.boardConfig.profileMenuSubtitle);
-              localStorage.setItem('pca_profile_menu_subtitle', data.boardConfig.profileMenuSubtitle);
-            }
-            if (data.boardConfig.boardMenuTitle) {
-              setBoardMenuTitle(data.boardConfig.boardMenuTitle);
-              localStorage.setItem('pca_board_menu_title', data.boardConfig.boardMenuTitle);
-            }
-            if (data.boardConfig.boardMenuSubtitle) {
-              setBoardMenuSubtitle(data.boardConfig.boardMenuSubtitle);
-              localStorage.setItem('pca_board_menu_subtitle', data.boardConfig.boardMenuSubtitle);
-            }
-            if (data.boardConfig.addressMenuTitle) {
-              setAddressMenuTitle(data.boardConfig.addressMenuTitle);
-              localStorage.setItem('pca_address_menu_title', data.boardConfig.addressMenuTitle);
-            }
-            if (data.boardConfig.addressMenuSubtitle) {
-              setAddressMenuSubtitle(data.boardConfig.addressMenuSubtitle);
-              localStorage.setItem('pca_address_menu_subtitle', data.boardConfig.addressMenuSubtitle);
-            }
-          }
-          
-          if (data.office && typeof data.office === 'object' && data.office.name) {
-            setOfficeDetailsState(data.office);
-            localStorage.setItem('pca_office_details', JSON.stringify(data.office));
-          }
-          
-          if (Array.isArray(data.sub_branches) && data.sub_branches.length > 0) {
-            setSubBranchesState(data.sub_branches);
-            localStorage.setItem('pca_sub_branches', JSON.stringify(data.sub_branches));
-          }
-          return hasLinks;
-        }
-        
-        if (Array.isArray(data) && data.length > 0) {
-          const sheetClicks: Record<string, number> = {};
-          data.forEach(link => {
-            if (link.clicks !== undefined) {
-              sheetClicks[link.id] = Number(link.clicks);
-            }
-          });
-          if (Object.keys(sheetClicks).length > 0) {
-            setLinkClicks(prev => ({ ...prev, ...sheetClicks }));
-          }
-          setLinks(data);
-          localStorage.setItem('pca_links_custom', JSON.stringify(data));
-          return true;
-        }
-        return false;
-      };
-
-      const success = processSyncedData(data);
-      if (success) {
-        setSyncStatus('success');
-        setSyncMessage('Sinkronisasi manual berhasil!');
-        alert("Sinkronisasi Berhasil! Seluruh data (Tautan, Profil, Pengurus, Alamat, Ranting) dan statistik klik dari Google Sheet telah dimuat.");
-      } else {
-        throw new Error("Format data tidak valid");
-      }
-    } catch (err) {
-      setSyncStatus('error');
-      setSyncMessage('Gagal melakukan sinkronisasi manual.');
-      alert("Sinkronisasi Gagal! Silakan periksa URL Web App atau koneksi internet Anda.");
-    } finally {
-      setIsSyncing(false);
-    }
+    await fetchLinksFromSheet(true);
   };
 
   // Close modals on escape key press
@@ -1150,7 +1165,9 @@ export default function App() {
           action: 'save_link',
           link: savedLink
         })
-      }).catch(err => console.warn("Gagal mengirim data tautan baru ke Google Sheets:", err));
+      })
+      .then(() => setTimeout(() => fetchLinksFromSheet(false), 800))
+      .catch(err => console.warn("Gagal mengirim data tautan baru ke Google Sheets:", err));
     }
 
     setShowLinkEditorModal(false);
@@ -1176,7 +1193,9 @@ export default function App() {
             action: 'delete_link',
             linkId: id
           })
-        }).catch(err => console.warn("Gagal menghapus data tautan di Google Sheets:", err));
+        })
+        .then(() => setTimeout(() => fetchLinksFromSheet(false), 800))
+        .catch(err => console.warn("Gagal menghapus data tautan di Google Sheets:", err));
       }
     }
   };
@@ -1212,7 +1231,9 @@ export default function App() {
           boardMenuTitle: boardMenuTitleForm,
           boardMenuSubtitle: boardMenuSubtitleForm
         })
-      }).catch(err => console.warn("Gagal mensinkronisasi data Pengurus ke Google Sheets:", err));
+      })
+      .then(() => setTimeout(() => fetchLinksFromSheet(false), 800))
+      .catch(err => console.warn("Gagal mensinkronisasi data Pengurus ke Google Sheets:", err));
     }
 
     setIsEditingBoard(false);
@@ -1242,7 +1263,9 @@ export default function App() {
           addressMenuTitle: addressMenuTitleForm,
           addressMenuSubtitle: addressMenuSubtitleForm
         })
-      }).catch(err => console.warn("Gagal mensinkronisasi data Alamat ke Google Sheets:", err));
+      })
+      .then(() => setTimeout(() => fetchLinksFromSheet(false), 800))
+      .catch(err => console.warn("Gagal mensinkronisasi data Alamat ke Google Sheets:", err));
     }
 
     setIsEditingOffice(false);
@@ -1284,7 +1307,9 @@ export default function App() {
           action: 'save_sub_branches',
           sub_branches: subBranchesForm
         })
-      }).catch(err => console.warn("Gagal mensinkronisasi data Ranting ke Google Sheets:", err));
+      })
+      .then(() => setTimeout(() => fetchLinksFromSheet(false), 800))
+      .catch(err => console.warn("Gagal mensinkronisasi data Ranting ke Google Sheets:", err));
     }
 
     setIsEditingProfile(false);
@@ -2122,25 +2147,31 @@ export default function App() {
               ) : (
                 /* GRID OF LEADERS */
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {boardMembersState.map((member, i) => (
-                    <div 
-                      key={i} 
-                      className="p-4 rounded-2xl bg-white/50 dark:bg-slate-950/50 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex flex-col items-center text-center group hover:scale-[1.02] transition-transform duration-300"
-                    >
-                      {/* AVATAR BOX (With generic placeholder fallback and premium style) */}
-                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gold/40 mb-3 bg-slate-100 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                        <HijabAvatar name={member.name} />
+                  {boardMembersState.map((member, i) => {
+                    const norm = normalizeBoardMember(member) || {
+                      name: member.name || member.Nama || 'Pengurus PCA',
+                      role: member.role || member.Jabatan || 'Pengurus'
+                    };
+                    return (
+                      <div 
+                        key={i} 
+                        className="p-4 rounded-2xl bg-white/50 dark:bg-slate-950/50 border border-slate-200/40 dark:border-slate-800/40 shadow-sm flex flex-col items-center text-center group hover:scale-[1.02] transition-transform duration-300"
+                      >
+                        {/* AVATAR BOX (With generic placeholder fallback and premium style) */}
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gold/40 mb-3 bg-slate-100 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
+                          <HijabAvatar name={norm.name} />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">
+                            {norm.name}
+                          </p>
+                          <p className="text-[10px] text-green dark:text-teal-400 font-bold uppercase mt-1 tracking-wider">
+                            {norm.role}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">
-                          {member.name}
-                        </p>
-                        <p className="text-[10px] text-green dark:text-teal-400 font-bold uppercase mt-1 tracking-wider">
-                          {member.role}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
