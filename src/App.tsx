@@ -7,7 +7,8 @@ import {
   Phone, Mail, ChevronRight, X, Info, Users, Globe,
   Facebook, Instagram, Youtube, MessageCircle, BarChart3, RotateCcw, 
   Award, CheckCircle2, Star, Sparkles, Navigation, Link2, BookOpen,
-  Database, RefreshCw, LogIn, LogOut, Lock, Edit3, Trash2, Plus
+  Database, RefreshCw, LogIn, LogOut, Lock, Edit3, Trash2, Plus,
+  Maximize2, Download, ZoomIn
 } from 'lucide-react';
 
 // Synthesize a premium soft tactile audio click in the browser
@@ -820,13 +821,22 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('pca_profile_details');
       if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
+        try {
+          const parsed = JSON.parse(saved);
+          return {
+            ...profileDetails,
+            ...parsed,
+            historyImage: parsed.historyImage || (profileDetails as any).historyImage || '/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg'
+          };
+        } catch (e) {}
       }
     }
     return profileDetails;
   });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState<any>({ history: '', vision: '', mission: [], achievements: [] });
+  const [profileForm, setProfileForm] = useState<any>({ history: '', historyImage: '', vision: '', mission: [], achievements: [] });
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImageTitle, setPreviewImageTitle] = useState<string>('');
   const [subBranchesState, setSubBranchesState] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('pca_sub_branches');
@@ -939,8 +949,13 @@ export default function App() {
 
     // 2. Profile Details
     if (data.profile && typeof data.profile === 'object' && (data.profile.history || data.profile.vision || data.profile.mission)) {
-      setProfileDetailsState(data.profile);
-      localStorage.setItem('pca_profile_details', JSON.stringify(data.profile));
+      const mergedProfile = {
+        ...profileDetails,
+        ...data.profile,
+        historyImage: data.profile.historyImage || (profileDetails as any).historyImage || '/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg'
+      };
+      setProfileDetailsState(mergedProfile);
+      localStorage.setItem('pca_profile_details', JSON.stringify(mergedProfile));
       processedAny = true;
     }
 
@@ -1119,12 +1134,14 @@ async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> 
   if (profileRows.length > 0) {
     const p = profileRows[0];
     const history = p.history || p.History || p.sejarah || p.Sejarah || "";
+    const historyImage = p.historyImage || p.history_image || p.foto_sk || p.gambar_sk || p.foto || p.image || '/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg';
     const vision = p.vision || p.Vision || p.visi || p.Visi || "";
     const rawMission = p.mission || p.Mission || p.misi || p.Misi || "";
     const rawAch = p.achievements || p.Achievements || p.prestasi || p.Prestasi || p['amal usaha'] || "";
     
     resultData.profile = {
       history,
+      historyImage,
       vision,
       mission: parseJsonOrStringList(rawMission),
       achievements: parseJsonOrStringList(rawAch)
@@ -1897,6 +1914,7 @@ async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> 
                         playSoftClick();
                         setProfileForm({ 
                           history: profileDetailsState.history || '', 
+                          historyImage: profileDetailsState.historyImage || (profileDetails as any).historyImage || '/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg',
                           vision: profileDetailsState.vision || '', 
                           mission: [...(profileDetailsState.mission || [])], 
                           achievements: [...(profileDetailsState.achievements || [])] 
@@ -1928,6 +1946,17 @@ async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> 
                       onChange={(e) => setProfileForm({...profileForm, history: e.target.value})}
                       rows={5}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">FOTO DOKUMEN SEJARAH / SK PENGESAHAN (URL / PATH)</label>
+                    <input 
+                      type="text"
+                      value={profileForm.historyImage || ''}
+                      onChange={(e) => setProfileForm({...profileForm, historyImage: e.target.value})}
+                      placeholder="/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-medium text-xs"
                     />
                   </div>
 
@@ -2082,7 +2111,82 @@ async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> 
                     <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2 text-base">
                       <BookOpen className="w-4 h-4 text-gold" /> Sejarah Singkat
                     </h4>
-                    <p>{profileDetailsState.history}</p>
+                    
+                    {(() => {
+                      const fullText = profileDetailsState.history || '';
+                      const phrase = "pembinaan moral umat.";
+                      const targetIdx = fullText.indexOf(phrase);
+                      const imageSrc = profileDetailsState.historyImage || '/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg';
+                      
+                      let beforeText = fullText;
+                      let afterText = '';
+                      
+                      if (targetIdx !== -1) {
+                        beforeText = fullText.substring(0, targetIdx + phrase.length);
+                        afterText = fullText.substring(targetIdx + phrase.length).trim();
+                      }
+                      
+                      return (
+                        <div className="space-y-4">
+                          <p className="leading-relaxed text-slate-600 dark:text-slate-300">
+                            {beforeText}
+                          </p>
+                          
+                          {/* DOKUMEN SK PENGESAHAN (DI TENGAH & PROPORSIONAL) */}
+                          <div className="my-5 flex flex-col items-center justify-center">
+                            <div 
+                              onClick={() => {
+                                playSoftClick();
+                                setPreviewImage(imageSrc);
+                                setPreviewImageTitle("Surat Keputusan Pengesahan Organisasi Pimpinan Pusat 'Aisyiyah Cabang Klaten Utara");
+                              }}
+                              className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-amber-500/20 dark:border-amber-400/30 bg-gradient-to-b from-white to-amber-50/20 dark:from-slate-900 dark:to-slate-950 shadow-lg hover:shadow-2xl transition-all duration-300 w-full max-w-sm sm:max-w-md md:max-w-lg"
+                            >
+                              {/* HEADER BADGE */}
+                              <div className="p-3 bg-amber-500/10 dark:bg-amber-500/15 border-b border-amber-500/20 dark:border-amber-500/25 flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <BookOpen className="w-3.5 h-3.5 text-gold shrink-0" />
+                                  <span className="truncate">Dokumen Sejarah SK Pendirian</span>
+                                </span>
+                                <span className="flex items-center gap-1 text-[11px] text-green dark:text-teal-400 font-bold group-hover:underline shrink-0 ml-2">
+                                  <ZoomIn className="w-3.5 h-3.5" />
+                                  <span>Perbesar / Baca Jelas</span>
+                                </span>
+                              </div>
+
+                              {/* IMAGE CONTAINER (CENTERED & PROPORTIONAL) */}
+                              <div className="p-3 sm:p-5 flex justify-center items-center bg-slate-100/60 dark:bg-slate-950/60">
+                                <img 
+                                  src={imageSrc} 
+                                  alt="Surat Keputusan Pengesahan Organisasi Nomor 1762/PPA/A/IX/1997 Pimpinan Pusat Aisyiyah Cabang Klaten Utara" 
+                                  className="w-full h-auto max-h-[460px] sm:max-h-[540px] object-contain rounded-xl shadow-md border border-slate-200/60 dark:border-slate-800 group-hover:scale-[1.015] transition-all duration-300"
+                                  loading="lazy"
+                                />
+                              </div>
+
+                              {/* CAPTION & DESCRIPTION */}
+                              <div className="p-3.5 text-center bg-white/90 dark:bg-slate-900/90 border-t border-slate-100 dark:border-slate-800">
+                                <p className="font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm">
+                                  Surat Keputusan Pengesahan Organisasi
+                                </p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  Nomor: <span className="font-semibold text-slate-700 dark:text-slate-300">1762 / PPA / A / IX / 1997</span> &bull; Pimpinan Pusat 'Aisyiyah Yogyakarta
+                                </p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                                  Menetapkan berdirinya Organisasi 'Aisyiyah Cabang Klaten Utara (1 Oktober 1997 M / 29 Jumadilawal 1418 H)
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {afterText && (
+                            <p className="leading-relaxed text-slate-600 dark:text-slate-300">
+                              {afterText}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* VISION & MISSION SECTION */}
@@ -3141,6 +3245,83 @@ async function fetchDirectFromGoogleSheets(spreadsheetId: string): Promise<any> 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 8. IMAGE LIGHTBOX / FULLSCREEN DOCUMENT VIEWER */}
+      {previewImage && (
+        <div 
+          onClick={() => { playSoftClick(); setPreviewImage(null); }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl max-h-[94vh] w-full bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/20 dark:border-slate-800/40 animate-modal-enter"
+          >
+            {/* LIGHTBOX HEADER */}
+            <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 truncate flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-gold shrink-0" />
+                  <span>{previewImageTitle || "Dokumen Surat Keputusan Pengesahan Organisasi"}</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Nomor: 1762 / PPA / A / IX / 1997 &bull; Penetapan Cabang Klaten Utara
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a 
+                  href={previewImage} 
+                  download="SK_Pengesahan_Cabang_Klaten_Utara.jpeg"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  title="Unduh Berkas Gambar Asli"
+                >
+                  <Download className="w-3.5 h-3.5 text-green" />
+                  <span className="hidden sm:inline">Unduh Dokumen</span>
+                </a>
+
+                <a 
+                  href={previewImage} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  title="Buka di Tab Baru"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="hidden sm:inline">Tab Baru</span>
+                </a>
+
+                <button 
+                  onClick={() => { playSoftClick(); setPreviewImage(null); }}
+                  className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  title="Tutup"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* LIGHTBOX BODY (HIGH-RESOLUTION SCROLLABLE VIEW) */}
+            <div className="flex-1 overflow-auto p-3 sm:p-6 bg-slate-100/70 dark:bg-slate-950/70 flex justify-center items-start">
+              <img 
+                src={previewImage} 
+                alt={previewImageTitle || "Dokumen SK Pengesahan"} 
+                className="max-w-full h-auto object-contain rounded-xl shadow-lg border border-slate-200/80 dark:border-slate-800"
+              />
+            </div>
+
+            {/* LIGHTBOX FOOTER */}
+            <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-950/90 border-t border-slate-200/80 dark:border-slate-800 text-center text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <span>Arsip Resmi Dokumen Pendirian &bull; Pimpinan Cabang 'Aisyiyah Klaten Utara</span>
+              <button 
+                onClick={() => { playSoftClick(); setPreviewImage(null); }}
+                className="text-green dark:text-teal-400 font-bold hover:underline cursor-pointer"
+              >
+                Tutup Tampilan
+              </button>
+            </div>
           </div>
         </div>
       )}

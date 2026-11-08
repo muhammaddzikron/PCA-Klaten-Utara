@@ -36,6 +36,7 @@ export const officeDetails = {
 
 export const profileDetails = {
   history: "Pimpinan Cabang 'Aisyiyah (PCA) Klaten Utara merupakan pilar gerakan dakwah perempuan Islam berkemajuan di bawah naungan Pimpinan Daerah 'Aisyiyah Kabupaten Klaten. Berdiri sejak puluhan tahun lalu, PCA Klaten Utara aktif dalam menyelenggarakan berbagai amal usaha di bidang keagamaan, pendidikan anak usia dini (TK ABA), pelayanan kesehatan sosial, pemberdayaan ekonomi perempuan, dan pembinaan moral umat.",
+  historyImage: "/assets/aistudio/SK_Pengesahan_Cabang_Klaten_Utara_93daf655.jpeg",
   vision: "Mewujudkan kehidupan perempuan Islam berkemajuan yang cerdas, mandiri, sehat, dan berakhlak mulia di wilayah Klaten Utara serta berkontribusi nyata bagi umat dan bangsa.",
   mission: [
     "Menyelenggarakan dakwah Islamiyah yang mencerahkan secara inklusif and berkelanjutan.",
